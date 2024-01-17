@@ -54,6 +54,7 @@
  *
  * @file
  * @brief       Interface definition for MRF24J40 based drivers
+ * @anchor      drivers_mrf24j40
  *
  * @author      Neo Nenaco <neo@nenaco.de>
  * @author      Koen Zandberg <koen@bergzand.net>
@@ -96,18 +97,7 @@ extern "C" {
 #define MRF24J40_OPT_PROMISCUOUS        (0x0200)    /**< promiscuous mode
                                                      *   active */
 #define MRF24J40_OPT_PRELOADING         (0x0400)    /**< preloading enabled */
-#define MRF24J40_OPT_TELL_TX_START      (0x0800)    /**< notify MAC layer on TX
-                                                     *   start */
-#define MRF24J40_OPT_TELL_TX_END        (0x1000)    /**< notify MAC layer on TX
-                                                     *   finished */
-#define MRF24J40_OPT_TELL_RX_START      (0x2000)    /**< notify MAC layer on RX
-                                                     *   start */
-#define MRF24J40_OPT_TELL_RX_END        (0x4000)    /**< notify MAC layer on RX
-                                                     *   finished */
-#define MRF24J40_OPT_REQ_AUTO_ACK       (0x8000)    /**< notify MAC layer on RX
-                                                     *   finished */
 /** @} */
-
 
 #define MRF24J40_TASK_TX_DONE           (0x01)      /**< TX operation is done */
 #define MRF24J40_TASK_TX_READY          (0x02)      /**< TX operation results ready for processing */
@@ -179,8 +169,10 @@ typedef struct {
  *
  * @param[out] dev          device descriptor
  * @param[in]  params       parameters for device initialization
+ * @param[in]  index        index of @p params in a global parameter struct array.
+ *                          If initialized manually, pass a unique identifier instead.
  */
-void mrf24j40_setup(mrf24j40_t *dev, const mrf24j40_params_t *params);
+void mrf24j40_setup(mrf24j40_t *dev, const mrf24j40_params_t *params, uint8_t index);
 
 /**
  * @brief   Trigger a hardware reset and configure radio with default values
@@ -222,11 +214,10 @@ void mrf24j40_set_addr_short(mrf24j40_t *dev, uint16_t addr);
 /**
  * @brief   Get the configured long address of the given device
  *
- * @param[in] dev           device to read from
- *
- * @return                  the currently set (8-byte) long address
+ * @param[in]  dev          device to read from
+ * @param[out] addr         the currently set (8-byte) long address
  */
-uint64_t mrf24j40_get_addr_long(mrf24j40_t *dev);
+void mrf24j40_get_addr_long(mrf24j40_t *dev, uint8_t *addr);
 
 /**
  * @brief   Set the long address of the given device
@@ -234,7 +225,7 @@ uint64_t mrf24j40_get_addr_long(mrf24j40_t *dev);
  * @param[in] dev           device to write to
  * @param[in] addr          (8-byte) long address to set
  */
-void mrf24j40_set_addr_long(mrf24j40_t *dev, uint64_t addr);
+void mrf24j40_set_addr_long(mrf24j40_t *dev, const uint8_t *addr);
 
 /**
  * @brief   Get the configured channel number of the given device

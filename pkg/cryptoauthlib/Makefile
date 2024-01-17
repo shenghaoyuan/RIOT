@@ -11,10 +11,18 @@ include $(RIOTBASE)/pkg/pkg.mk
 CMAKE_MINIMAL_VERSION = 3.6.0
 
 CFLAGS += $(INCLUDES)
-CFLAGS += -Wno-missing-field-initializers -Wno-unused-function
-CFLAGS += -Wno-type-limits -Wno-strict-aliasing -Wno-unused-variable -DATCA_HAL_I2C
-CFLAGS += -Wno-unused-parameter -Wno-sign-compare -Wno-overflow -Wno-pointer-to-int-cast
+CFLAGS += -DATCA_HAL_I2C
+CFLAGS += -Wno-cast-align
 CFLAGS += -Wno-char-subscripts
+CFLAGS += -Wno-missing-field-initializers
+CFLAGS += -Wno-overflow
+CFLAGS += -Wno-pointer-to-int-cast
+CFLAGS += -Wno-sign-compare
+CFLAGS += -Wno-strict-aliasing
+CFLAGS += -Wno-type-limits
+CFLAGS += -Wno-unused-function
+CFLAGS += -Wno-unused-parameter
+CFLAGS += -Wno-unused-variable
 
 TOOLCHAIN_FILE=$(PKG_SOURCE_DIR)/xcompile-toolchain.cmake
 
@@ -39,10 +47,10 @@ $(TOOLCHAIN_FILE): git-download
 	$(RIOTTOOLS)/cmake/generate-xcompile-toolchain.sh > $(TOOLCHAIN_FILE)
 
 build_tests:
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/test -f $(RIOTBASE)/Makefile.base MODULE=$(PKG_TEST_NAME)
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/test/jwt -f $(RIOTBASE)/Makefile.base MODULE=$(PKG_TEST_NAME)_jwt
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/test/tng -f $(RIOTBASE)/Makefile.base MODULE=$(PKG_TEST_NAME)_tng
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/test/atcacert -f $(RIOTBASE)/Makefile.base MODULE=$(PKG_TEST_NAME)_atcacert
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/test -f $(RIOTBASE)/Makefile.base MODULE=$(PKG_TEST_NAME)
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/test/jwt -f $(RIOTBASE)/Makefile.base MODULE=$(PKG_TEST_NAME)_jwt
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/test/tng -f $(RIOTBASE)/Makefile.base MODULE=$(PKG_TEST_NAME)_tng
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/test/atcacert -f $(RIOTBASE)/Makefile.base MODULE=$(PKG_TEST_NAME)_atcacert
 
 git-download: | ..cmake_version_supported
 

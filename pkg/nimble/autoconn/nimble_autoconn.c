@@ -31,7 +31,7 @@
 #include "host/ble_hs.h"
 #include "nimble/nimble_port.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    0
 #include "debug.h"
 
 #if defined(MODULE_NIMBLE_AUTOCONN_IPSP)
@@ -78,7 +78,7 @@ static void _on_state_change(struct ble_npl_event *ev)
         nimble_scanner_stop();
         /* start advertising/accepting */
         int res = nimble_netif_accept(_ad.buf, _ad.pos, &_adv_params);
-        assert((res == NIMBLE_NETIF_OK) || (res == NIMBLE_NETIF_NOMEM));
+        assert((res == 0) || (res == -ENOMEM));
         (void)res;
 
         /* schedule next state change */
@@ -131,14 +131,15 @@ static int _filter_uuid(const bluetil_ad_t *ad)
     return 0;
 }
 
-static void _on_scan_evt(uint8_t type, const ble_addr_t *addr, int8_t rssi,
+static void _on_scan_evt(uint8_t type, const ble_addr_t *addr,
+                         const nimble_scanner_info_t *info,
                          const uint8_t *ad_buf, size_t ad_len)
 {
-    (void)rssi;
+    (void)info;
 
     /* we are only interested in ADV_IND packets, the rest can be dropped right
      * away */
-    if (type != BLE_HCI_ADV_TYPE_ADV_IND) {
+    if (type != BLE_HCI_ADV_RPT_EVTYPE_ADV_IND) {
         return;
     }
 
@@ -164,20 +165,16 @@ static void _on_scan_evt(uint8_t type, const ble_addr_t *addr, int8_t rssi,
 
 static void _evt_dbg(const char *msg, int handle, const uint8_t *addr)
 {
-#if ENABLE_DEBUG
-    printf("[autoconn] %s (%i|", msg, handle);
-    if (addr) {
-        bluetil_addr_print(addr);
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        printf("[autoconn] %s (%i|", msg, handle);
+        if (addr) {
+            bluetil_addr_print(addr);
+        }
+        else {
+            printf("n/a");
+        }
+        puts(")");
     }
-    else {
-        printf("n/a");
-    }
-    puts(")");
-#else
-    (void)msg;
-    (void)handle;
-    (void)addr;
-#endif
 }
 
 static void _on_netif_evt(int handle, nimble_netif_event_t event,
@@ -219,7 +216,7 @@ static void _on_netif_evt(int handle, nimble_netif_event_t event,
             break;
         case NIMBLE_NETIF_ABORT_SLAVE:
             _evt_dbg("ABORT slave", handle, addr);
-            _state = STATE_IDLE;
+            _deactivate();
             break;
         case NIMBLE_NETIF_CONN_UPDATED:
             _evt_dbg("UPDATED", handle, addr);
@@ -281,8 +278,8 @@ int nimble_autoconn_update(const nimble_autoconn_params_t *params,
     /* populate the connection parameters */
     _conn_params.scan_itvl = BLE_GAP_SCAN_ITVL_MS(params->scan_win);
     _conn_params.scan_window = _conn_params.scan_itvl;
-    _conn_params.itvl_min = BLE_GAP_CONN_ITVL_MS(params->conn_itvl);
-    _conn_params.itvl_max = _conn_params.itvl_min;
+    _conn_params.itvl_min = BLE_GAP_CONN_ITVL_MS(params->conn_itvl_min);
+    _conn_params.itvl_max = BLE_GAP_CONN_ITVL_MS(params->conn_itvl_max);
     _conn_params.latency = 0;
     _conn_params.supervision_timeout = BLE_GAP_SUPERVISION_TIMEOUT_MS(
                                                          params->conn_super_to);
@@ -300,13 +297,12 @@ int nimble_autoconn_update(const nimble_autoconn_params_t *params,
     conn_update_params.max_ce_len = 0;
 
     /* calculate the used scan parameters */
-    struct ble_gap_disc_params scan_params;
-    scan_params.itvl = BLE_GAP_SCAN_ITVL_MS(params->scan_itvl);
-    scan_params.window = BLE_GAP_SCAN_WIN_MS(params->scan_win);
-    scan_params.filter_policy = 0;
-    scan_params.limited = 0;
-    scan_params.passive = 0;
-    scan_params.filter_duplicates = 1;
+    nimble_scanner_cfg_t scan_params;
+    scan_params.itvl_ms = params->scan_itvl;
+    scan_params.win_ms = params->scan_win;
+    scan_params.flags = NIMBLE_SCANNER_PASSIVE
+                        | NIMBLE_SCANNER_FILTER_DUPS
+                        | NIMBLE_SCANNER_PHY_1M;
 
     /* set the advertising parameters used */
     _adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;

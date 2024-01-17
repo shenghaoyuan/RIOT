@@ -5,5 +5,7 @@ PKG_LICENSE=BSD
 
 include $(RIOTBASE)/pkg/pkg.mk
 
+CFLAGS += -Wno-cast-align
+
 all:
-	"$(MAKE)" -C $(PKG_SOURCE_DIR) -f $(RIOTBASE)/Makefile.base
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR) -f $(RIOTBASE)/Makefile.base

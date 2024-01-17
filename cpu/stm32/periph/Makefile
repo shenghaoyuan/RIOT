@@ -2,16 +2,24 @@ MODULE = periph
 
 # Select the specific implementation for `periph_i2c`
 ifneq (,$(filter periph_i2c,$(USEMODULE)))
-  ifneq (,$(filter $(CPU_FAM),f0 f3 f7 g0 g4 l0 l4 wb))
+  ifneq (,$(filter $(CPU_FAM),f0 f3 f7 g0 g4 l0 l4 l5 u5 wb wl))
     SRC += i2c_1.c
-  else # f1/f2/f4/l1
+  else ifneq (,$(filter $(CPU_FAM),f1 f2 f4 l1))
     SRC += i2c_2.c
+  else
+    $(error STM32 series I2C implementation not found.)
   endif
 endif
 
 # Select the specific implementation for `periph_adc`
 ifneq (,$(filter periph_adc,$(USEMODULE)))
-  SRC += adc_$(CPU_FAM).c
+  ifneq (,$(filter $(CPU_FAM),f4 f7))
+    SRC += adc_f4_f7.c
+  else ifneq (,$(filter $(CPU_FAM),f0 g0))
+    SRC += adc_f0_g0.c
+  else
+    SRC += adc_$(CPU_FAM).c
+  endif
 endif
 
 # Select the correct implementation for `periph_gpio`
@@ -38,6 +46,15 @@ ifneq (,$(filter periph_rtt,$(USEMODULE)))
     SRC += rtt_f1.c
   else
     SRC += rtt_all.c
+  endif
+endif
+
+# Select the correct implementation for `periph_usbdev`
+ifneq (,$(filter periph_usbdev,$(USEMODULE)))
+  ifeq (wb,$(CPU_FAM))
+    SRC += usbdev_fs.c
+  else
+    SRC += usbdev_otg.c
   endif
 endif
 

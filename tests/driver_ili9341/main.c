@@ -19,7 +19,8 @@
  */
 
 #include <stdio.h>
-#include "xtimer.h"
+#include "timex.h"
+#include "ztimer.h"
 #include "board.h"
 #include "ili9341.h"
 #include "ili9341_params.h"
@@ -55,26 +56,26 @@ int main(void)
     /* Fill square with blue */
     puts("Drawing blue rectangle");
     ili9341_fill(&dev, 10, 59, 10, 109, 0x001F);
-    xtimer_sleep(1);
+    ztimer_sleep(ZTIMER_MSEC, 1 * MS_PER_SEC);
 
     puts("Drawing green rectangle");
     ili9341_fill(&dev, 10, 59, 10, 109, 0x07E0);
-    xtimer_sleep(1);
+    ztimer_sleep(ZTIMER_MSEC, 1 * MS_PER_SEC);
 
     puts("Drawing red rectangle");
     ili9341_fill(&dev, 10, 59, 10, 109, 0xf800);
-    xtimer_sleep(1);
+    ztimer_sleep(ZTIMER_MSEC, 1 * MS_PER_SEC);
 
     ili9341_invert_on(&dev);
     puts("ili9341 TFT display inverted");
-    xtimer_sleep(1);
+    ztimer_sleep(ZTIMER_MSEC, 1 * MS_PER_SEC);
     ili9341_invert_off(&dev);
     puts("ili9341 TFT display normal");
 
     /* Make the same square black again */
     ili9341_fill(&dev, 10, 59, 10, 109, 0x0000);
 
-#ifndef NO_RIOT_IMAGE
+#ifndef CONFIG_NO_RIOT_IMAGE
     /* Approximate middle of the display */
     ili9341_pixmap(&dev, 95, 222, 85, 153, (const uint16_t *)picture);
 #endif

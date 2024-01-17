@@ -15,12 +15,12 @@
 #define LOG_LEVEL LOG_DEBUG
 #include "log.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 
 #include "checksum/crc8.h"
 #include "sps30.h"
-#include "xtimer.h"
 #include "byteorder.h"
 #include "kernel_defines.h"
 
@@ -50,6 +50,8 @@ typedef enum {
     SPS30_CMD_RD_ARTICLE      = 0xD025, /**< Read article code */
     SPS30_CMD_RD_SERIAL       = 0xD033, /**< Read serial number */
     SPS30_CMD_RESET           = 0xD304, /**< Reset */
+    SPS30_CMD_SLEEP           = 0x1001, /**< Sleep */
+    SPS30_CMD_WAKE_UP         = 0x1103  /**< Wake-up */
 } sps30_cmd_t;
 /** @} */
 
@@ -102,7 +104,7 @@ static inline void _cpy_add_crc(uint8_t *data, size_t len, uint8_t *crcd_data)
  * @return       true if all CRCs are valid
  * @return       false if at least one CRC is invalid
  */
-static inline bool _cpy_check_crc(uint8_t *data, size_t len, uint8_t *crcd_data)
+static inline bool _cpy_check_crc(uint8_t *data, size_t len, const uint8_t *crcd_data)
 {
     for (size_t elem = 0; elem < len / 2; elem++) {
         int idx = (elem << 1);
@@ -144,10 +146,7 @@ static int _rx_tx_data(const sps30_t *dev, uint16_t ptr_addr,
     int res = 0;
     unsigned retr = CONFIG_SPS30_ERROR_RETRY;
 
-    if (i2c_acquire(dev->p.i2c_dev) != 0) {
-        LOG_ERROR("could not acquire I2C bus %d\n", dev->p.i2c_dev);
-        return -SPS30_I2C_ERROR;
-    }
+    i2c_acquire(dev->p.i2c_dev);
 
     do {
         size_t addr_data_crc_len = SPS30_PTR_LEN + len + len / 2;
@@ -224,7 +223,8 @@ int sps30_read_measurement(const sps30_t *dev, sps30_data_t *data)
 {
     /* This compile time check is needed to ensure the below method used for
        endianness conversion will work as expected */
-    BUILD_BUG_ON(sizeof(sps30_data_t) != (sizeof(float) * 10));
+    static_assert(sizeof(sps30_data_t) == (sizeof(float) * 10),
+                  "sps30_data_t must be sized 10 floats");
     assert(dev && data);
 
     /* The target buffer is also used for storing the raw data temporarily */
@@ -282,4 +282,19 @@ int sps30_reset(const sps30_t *dev)
 {
     assert(dev);
     return _rx_tx_data(dev, SPS30_CMD_RESET, NULL, 0, false);
+}
+
+int sps30_sleep(const sps30_t *dev)
+{
+    assert(dev);
+    sps30_stop_measurement(dev);
+    return _rx_tx_data(dev, SPS30_CMD_SLEEP, NULL, 0, false);
+}
+
+int sps30_wakeup(const sps30_t *dev)
+{
+    assert(dev);
+    /* Send I2C start stop sequence to re-enable I2C interface on sensor */
+    i2c_write_bytes(dev->p.i2c_dev, SPS30_I2C_ADDR, NULL, 0, 0);
+    return _rx_tx_data(dev, SPS30_CMD_WAKE_UP, NULL, 0, false);
 }

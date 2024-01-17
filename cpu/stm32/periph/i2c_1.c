@@ -17,7 +17,7 @@
  * @file
  * @brief       Low-level I2C driver implementation
  *
- * This driver supports the STM32 F0, F3, F7, L0, L4 & WB families.
+ * This driver supports the STM32 F0, F3, F7, L0, L4, L5 & WB families.
  * @note This implementation only implements the 7-bit addressing polling mode
  * (for now interrupt mode is not available)
  *
@@ -46,7 +46,7 @@
 #include "periph/gpio.h"
 #include "periph_conf.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    0
 #include "debug.h"
 
 #define TICK_TIMEOUT    (0xFFFF)
@@ -135,7 +135,7 @@ static void _i2c_init(I2C_TypeDef *i2c, uint32_t timing)
     i2c->CR1 |= I2C_CR1_PE;
 }
 
-int i2c_acquire(i2c_t dev)
+void i2c_acquire(i2c_t dev)
 {
     assert(dev < I2C_NUMOF);
 
@@ -145,8 +145,6 @@ int i2c_acquire(i2c_t dev)
 
     /* enable device */
     i2c_config[dev].dev->CR1 |= I2C_CR1_PE;
-
-    return 0;
 }
 
 void i2c_release(i2c_t dev)
@@ -299,7 +297,6 @@ static int _write(I2C_TypeDef *i2c, uint16_t addr, const void *data,
     }
     return _wait_for_bus(i2c);
 }
-
 
 static int _start(I2C_TypeDef *i2c, uint32_t cr2, uint8_t flags)
 {

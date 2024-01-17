@@ -38,6 +38,7 @@
  * - Observe Server Operation
  * - Block Operation
  * - Proxy Operation
+ * - DTLS for transport security
  * - Implementation Notes
  * - Implementation Status
  *
@@ -338,6 +339,22 @@
  *
  * Not implemented yet.
  *
+ * ## DTLS as transport security ##
+ *
+ * Gcoap allows to use DTLS for transport security by using the @ref net_sock_dtls
+ * "DTLS sock API". Using the module gcoap_dtls enables the support. Gcoap
+ * listens for requests on CONFIG_GCOAPS_PORT, 5684 by default when DTLS is enabled.
+ *
+ * Credentials have to been configured before use. See @ref net_credman "Credman"
+ * and @ref net_sock_dtls_creds "DTLS sock credentials API" for credential managing.
+ * Access to the DTLS socket is provided by gcoap_get_sock_dtls().
+ *
+ * Gcoap includes a DTLS session management component that stores active sessions.
+ * By default, it tries to have CONFIG_GCOAP_DTLS_MINIMUM_AVAILABLE_SESSIONS
+ * session slots available to keep the server responsive. If not enough sessions
+ * are available the server destroys the session that has not been used for the
+ * longest time after CONFIG_GCOAP_DTLS_MINIMUM_AVAILABLE_SESSIONS_TIMEOUT_USEC.
+ *
  * ## Implementation Notes ##
  *
  * ### Waiting for a response ###
@@ -384,8 +401,11 @@
 #include "event/timeout.h"
 #include "net/ipv6/addr.h"
 #include "net/sock/udp.h"
+#if IS_USED(MODULE_GCOAP_DTLS)
+#include "net/sock/dtls.h"
+#endif
 #include "net/nanocoap.h"
-#include "xtimer.h"
+#include "timex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -402,6 +422,36 @@ extern "C" {
  */
 #ifndef CONFIG_GCOAP_PORT
 #define CONFIG_GCOAP_PORT              (5683)
+#endif
+/**
+ * @brief   Secure Server port; use RFC 7252 default if not defined
+ */
+#ifndef CONFIG_GCOAPS_PORT
+#define CONFIG_GCOAPS_PORT             (5684)
+#endif
+
+/**
+ * @brief   Timeout for the DTLS handshake process. Set to 0 for infinite time
+ */
+#ifndef CONFIG_GCOAP_DTLS_HANDSHAKE_TIMEOUT_MSEC
+#define CONFIG_GCOAP_DTLS_HANDSHAKE_TIMEOUT_MSEC    (3 * MS_PER_SEC)
+#endif
+
+/**
+ * @brief   Number of minimum available sessions. If the count of available
+ *          sessions falls below this threshold, the oldest used session will be
+ *          closed after a timeout time. Set to 0 to deactivate this feature.
+ */
+#ifndef CONFIG_GCOAP_DTLS_MINIMUM_AVAILABLE_SESSIONS
+#define CONFIG_GCOAP_DTLS_MINIMUM_AVAILABLE_SESSIONS  (1)
+#endif
+
+/**
+ * @brief   Timeout for freeing up a session when minimum number of available
+ *          sessions is not given.
+ */
+#ifndef CONFIG_GCOAP_DTLS_MINIMUM_AVAILABLE_SESSIONS_TIMEOUT_MSEC
+#define CONFIG_GCOAP_DTLS_MINIMUM_AVAILABLE_SESSIONS_TIMEOUT_MSEC  (15 * MS_PER_SEC)
 #endif
 
 /**
@@ -459,10 +509,13 @@ extern "C" {
  * @{
  */
 #define GCOAP_MEMO_UNUSED       (0)     /**< This memo is unused */
-#define GCOAP_MEMO_WAIT         (1)     /**< Request sent; awaiting response */
-#define GCOAP_MEMO_RESP         (2)     /**< Got response */
-#define GCOAP_MEMO_TIMEOUT      (3)     /**< Timeout waiting for response */
-#define GCOAP_MEMO_ERR          (4)     /**< Error processing response packet */
+#define GCOAP_MEMO_RETRANSMIT   (1)     /**< Request sent, retransmitting until response arrives */
+#define GCOAP_MEMO_WAIT         (2)     /**< Request sent; awaiting response */
+#define GCOAP_MEMO_RESP         (3)     /**< Got response */
+#define GCOAP_MEMO_TIMEOUT      (4)     /**< Timeout waiting for response */
+#define GCOAP_MEMO_ERR          (5)     /**< Error processing response packet */
+#define GCOAP_MEMO_RESP_TRUNC   (6)     /**< Got response, but it got truncated into the receive
+                                             buffer that is now incomplete */
 /** @} */
 
 /**
@@ -485,12 +538,12 @@ extern "C" {
 
 /**
  * @ingroup net_gcoap_conf
- * @brief   Default time to wait for a non-confirmable response [in usec]
+ * @brief   Default time to wait for a non-confirmable response [in msec]
  *
  * Set to 0 to disable timeout.
  */
-#ifndef CONFIG_GCOAP_NON_TIMEOUT
-#define CONFIG_GCOAP_NON_TIMEOUT       (5000000U)
+#ifndef CONFIG_GCOAP_NON_TIMEOUT_MSEC
+#define CONFIG_GCOAP_NON_TIMEOUT_MSEC       (5000U)
 #endif
 
 /**
@@ -564,11 +617,19 @@ extern "C" {
 
 /**
  * @brief Stack size for module thread
+ * @{
  */
 #ifndef GCOAP_STACK_SIZE
-#define GCOAP_STACK_SIZE (THREAD_STACKSIZE_DEFAULT + DEBUG_EXTRA_STACKSIZE \
-                          + sizeof(coap_pkt_t))
+#if IS_USED(MODULE_GCOAP_DTLS)
+#define GCOAP_DTLS_EXTRA_STACKSIZE  (THREAD_STACKSIZE_DEFAULT)
+#else
+#define GCOAP_DTLS_EXTRA_STACKSIZE  (0)
 #endif
+
+#define GCOAP_STACK_SIZE (THREAD_STACKSIZE_DEFAULT + DEBUG_EXTRA_STACKSIZE \
+                          + sizeof(coap_pkt_t) + GCOAP_DTLS_EXTRA_STACKSIZE)
+#endif
+/** @} */
 
 /**
  * @ingroup net_gcoap_conf
@@ -580,10 +641,12 @@ extern "C" {
 
 /**
  * @name Bitwise positional flags for encoding resource links
+ * @anchor COAP_LINK_FLAG_
  * @{
  */
 #define COAP_LINK_FLAG_INIT_RESLIST  (1)  /**< initialize as for first resource
                                            *   in a list */
+
 /** @} */
 
 /**
@@ -592,8 +655,8 @@ extern "C" {
 typedef struct {
     unsigned content_format;            /**< link format */
     size_t link_pos;                    /**< position of link within listener */
-    uint16_t flags;                     /**< encoder switches; see GCOAP_LINK_FLAG_*
-                                             constants */
+    uint16_t flags;                     /**< encoder switches; see @ref
+                                             COAP_LINK_FLAG_ constants */
 } coap_link_encoder_ctx_t;
 
 /**
@@ -611,15 +674,58 @@ typedef ssize_t (*gcoap_link_encoder_t)(const coap_resource_t *resource, char *b
                                         size_t maxlen, coap_link_encoder_ctx_t *context);
 
 /**
+ * @name    Return values for resource related operations
+ * @{
+ */
+#define GCOAP_RESOURCE_FOUND        (0)
+#define GCOAP_RESOURCE_WRONG_METHOD (1)
+#define GCOAP_RESOURCE_NO_PATH      (2)
+#define GCOAP_RESOURCE_ERROR        (3)
+/** @} */
+
+/**
+ * @brief   Forward declaration of the gcoap listener state container
+ */
+typedef struct gcoap_listener gcoap_listener_t;
+
+/**
+ * @brief   Handler function for the request matcher strategy
+ *
+ * @param[in]  listener     Listener context
+ * @param[out] resource     Matching resource
+ * @param[in]  pdu          Pointer to the PDU
+ *
+ * @return  GCOAP_RESOURCE_FOUND      on resource match
+ * @return  GCOAP_RESOURCE_NO_PATH    on no path found in @p resource
+ *                                    that matches @p pdu
+ * @return  GCOAP_RESOURCE_ERROR      on processing failure of the request
+ */
+typedef int (*gcoap_request_matcher_t)(gcoap_listener_t *listener,
+                                       const coap_resource_t **resource,
+                                       const coap_pkt_t *pdu);
+
+/**
  * @brief   A modular collection of resources for a server
  */
-typedef struct gcoap_listener {
+struct gcoap_listener {
     const coap_resource_t *resources;   /**< First element in the array of
                                          *   resources; must order alphabetically */
     size_t resources_len;               /**< Length of array */
     gcoap_link_encoder_t link_encoder;  /**< Writes a link for a resource */
     struct gcoap_listener *next;        /**< Next listener in list */
-} gcoap_listener_t;
+
+    /**
+     * @brief  Function that picks a suitable request handler from a
+     * request.
+     *
+     * @note Leaving this NULL selects the default strategy that picks
+     * handlers by matching their Uri-Path to resource paths (as per
+     * the documentation of the @ref resources and @ref resources_len
+     * fields). Alternative handlers may cast the @ref resources and
+     * @ref resources_len fields to fit their needs.
+     */
+    gcoap_request_matcher_t request_matcher;
+};
 
 /**
  * @brief   Forward declaration of the request memo type
@@ -675,6 +781,33 @@ typedef struct {
 } gcoap_observe_memo_t;
 
 /**
+ * @brief   Coap socket types
+ */
+typedef enum {
+    GCOAP_SOCKET_TYPE_UNDEF = 0,
+    GCOAP_SOCKET_TYPE_UDP,
+    GCOAP_SOCKET_TYPE_DTLS
+} gcoap_socket_type_t;
+
+/**
+ * @brief   Coap socket to handle multiple transport types
+ */
+typedef struct {
+    gcoap_socket_type_t type;                /**< Type of stored socket */
+    union {
+        sock_udp_t *udp;
+#if IS_USED(MODULE_GCOAP_DTLS) || defined(DOXYGEN)
+        sock_dtls_t *dtls;
+#endif
+    } socket;                               /**< Stored socket */
+#if IS_USED(MODULE_GCOAP_DTLS) || defined(DOXYGEN)
+    sock_dtls_session_t ctx_dtls_session;   /**< Session object for the stored socket.
+                                                 Used for exchanging a session between
+                                                 functions. */
+#endif
+} gcoap_socket_t;
+
+/**
  * @brief   Initializes the gcoap thread and device
  *
  * Must call once before first use.
@@ -687,6 +820,16 @@ kernel_pid_t gcoap_init(void);
 
 /**
  * @brief   Starts listening for resource paths
+ *
+ * @pre @p listener is a valid pointer to a single listener (that is,
+ *      `listener->next == NULL`)
+ *
+ * @note If you are tempted to register a pre-linked chain of listeners,
+ *       consider placing all their resources in the resources array of a
+ *       single listener instead. In the few cases where this does not work
+ *       (that is, when the resources need a different `link_encoder` or other
+ *       fields of the listener struct), they can just be registered
+ *       individually.
  *
  * @param[in] listener  Listener containing the resources.
  */
@@ -703,15 +846,43 @@ void gcoap_register_listener(gcoap_listener_t *listener);
  * @param[in] len       Length of the buffer
  * @param[in] code      Request code, one of COAP_METHOD_XXX or COAP_CODE_EMPTY
  *                      to ping
- * @param[in] path      Resource path, may be NULL
+ * @param[in] path      Resource path, may be NULL. @p path_len will be ignored
+ *                      in that case.
+ * @param[in] path_len  Length of @p path.
  *
  * @pre @p path must start with `/` if not NULL
  *
  * @return  0 on success
  * @return  < 0 on error
  */
-int gcoap_req_init(coap_pkt_t *pdu, uint8_t *buf, size_t len,
-                   unsigned code, const char *path);
+int gcoap_req_init_path_buffer(coap_pkt_t *pdu, uint8_t *buf, size_t len,
+                               unsigned code, const char *path,
+                               size_t path_len);
+
+/**
+ * @brief   Initializes a CoAP request PDU on a buffer.
+ *
+ * If @p code is COAP_CODE_EMPTY, prepares a complete "CoAP ping" 4 byte empty
+ * message request, ready to send.
+ *
+ * @param[out] pdu      Request metadata
+ * @param[out] buf      Buffer containing the PDU
+ * @param[in] len       Length of the buffer
+ * @param[in] code      Request code, one of COAP_METHOD_XXX or COAP_CODE_EMPTY
+ *                      to ping
+ * @param[in] path      `\0`-terminated resource path, may be NULL
+ *
+ * @pre @p path must start with `/` if not NULL
+ *
+ * @return  0 on success
+ * @return  < 0 on error
+ */
+static inline int gcoap_req_init(coap_pkt_t *pdu, uint8_t *buf, size_t len,
+                                 unsigned code, const char *path)
+{
+    return gcoap_req_init_path_buffer(pdu, buf, len, code, path,
+                                      (path) ? strlen(path) : 0U);
+}
 
 /**
  * @brief   Writes a complete CoAP request PDU when there is not a payload
@@ -743,11 +914,12 @@ static inline ssize_t gcoap_request(coap_pkt_t *pdu, uint8_t *buf, size_t len,
  * @param[in] context       User defined context passed to the response handler
  *
  * @return  length of the packet
+ * @return -ENOTCONN, if DTLS was used and session establishment failed
  * @return  0 if cannot send
  */
-size_t gcoap_req_send(const uint8_t *buf, size_t len,
-                      const sock_udp_ep_t *remote,
-                      gcoap_resp_handler_t resp_handler, void *context);
+ssize_t gcoap_req_send(const uint8_t *buf, size_t len,
+                       const sock_udp_ep_t *remote,
+                       gcoap_resp_handler_t resp_handler, void *context);
 
 /**
  * @brief   Initializes a CoAP response packet on a buffer
@@ -862,25 +1034,16 @@ int gcoap_get_resource_list(void *buf, size_t maxlen, uint8_t cf);
 ssize_t gcoap_encode_link(const coap_resource_t *resource, char *buf,
                           size_t maxlen, coap_link_encoder_ctx_t *context);
 
+#if IS_USED(MODULE_GCOAP_DTLS) || defined(DOXYGEN)
 /**
- * @brief   Adds a single Uri-Query option to a CoAP request
+ * @brief   Get the underlying DTLS socket of gcoap.
  *
- * To add multiple Uri-Query options, simply call this function multiple times.
- * The Uri-Query options will be added in the order those calls.
+ * Useful for managing credentials of gcoap.
  *
- * @deprecated  Will not be available after the 2020.10 release. Use
- * coap_opt_add_uri_query() instead.
- *
- * @param[out] pdu      The package that is being build
- * @param[in]  key      Key to add to the query string
- * @param[in]  val      Value to assign to @p key (may be NULL)
- *
- * @pre     ((pdu != NULL) && (key != NULL))
- *
- * @return  overall length of new query string
- * @return  -1 on error
+ * @return  pointer to the @ref sock_dtls_t object
  */
-int gcoap_add_qstring(coap_pkt_t *pdu, const char *key, const char *val);
+sock_dtls_t *gcoap_get_sock_dtls(void);
+#endif
 
 #ifdef __cplusplus
 }

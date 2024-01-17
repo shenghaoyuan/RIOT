@@ -1,6 +1,6 @@
 PKG_NAME=gecko_sdk
 PKG_URL=https://github.com/basilfx/RIOT-gecko-sdk
-PKG_VERSION=31a7f247e19fca16dc961427c53f27f777f7b557
+PKG_VERSION=b47581a678a53c01dacea9a0a3956c67854b12f4
 PKG_LICENSE=Zlib
 
 include $(RIOTBASE)/pkg/pkg.mk
@@ -13,5 +13,10 @@ ifneq (llvm,$(TOOLCHAIN))
   CFLAGS += -Wno-int-in-bool-context
 endif
 
+# Disable -Wcast-align for this package, as source contains cast that increase
+# alignment requirements. Let's hope those are false positives and proper
+# alignment is assured.
+CFLAGS += -Wno-cast-align
+
 all:
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/dist
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/dist

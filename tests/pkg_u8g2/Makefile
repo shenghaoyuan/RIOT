@@ -1,6 +1,7 @@
 include ../Makefile.tests_common
 
-USEMODULE += xtimer
+USEMODULE += ztimer
+USEMODULE += ztimer_usec
 
 USEPKG += u8g2
 
@@ -30,6 +31,8 @@ ifeq ($(TEST_OUTPUT),1)
 endif
 
 ifeq ($(TEST_OUTPUT),2)
+# SDL requires more stack
+  CFLAGS += -DTHREAD_STACKSIZE_MAIN=48*1024
   USEMODULE += u8g2_sdl
 endif
 

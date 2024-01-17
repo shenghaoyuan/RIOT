@@ -1,6 +1,6 @@
 PKG_NAME=ccn-lite
 PKG_URL=https://github.com/cn-uofbasel/ccn-lite/
-PKG_VERSION=2da4123b055d90c406c08cf2e96704e132220536
+PKG_VERSION=da0d9de8d82349dff845acc62d37242dd09b3d3d
 PKG_LICENSE=ISC
 
 include $(RIOTBASE)/pkg/pkg.mk
@@ -16,6 +16,8 @@ ifeq (llvm,$(TOOLCHAIN))
 endif
 
 TOOLCHAIN_FILE = $(PKG_SOURCE_DIR)/xcompile-toolchain.cmake
+
+CFLAGS += -Wno-cast-align
 
 all: $(BINDIR)/ccn-lite.a
 

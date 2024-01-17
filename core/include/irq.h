@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Freie Universität Berlin
+ * Copyright (C) 2013,2019 Freie Universität Berlin
  *
  * This file is subject to the terms and conditions of the GNU Lesser
  * General Public License v2.1. See the file LICENSE in the top level
@@ -16,6 +16,7 @@
  * @brief       IRQ driver interface
  *
  * @author      Freie Universität Berlin, Computer Systems & Telematics
+ * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
  */
 
 #ifndef IRQ_H
@@ -52,7 +53,12 @@ MAYBE_INLINE unsigned irq_disable(void);
  *          interpreted as a boolean value. The actual value is only
  *          significant for irq_restore().
  *
- * @see     irq_restore
+ * @warning This function is here primarily for internal use, and for
+ *          compatibility with the Arduino environment (which lacks the
+ *          "disable / restore" concept. Enabling interrupts when a different
+ *          component disabled them can easily cause unintended behavior there.
+ *
+ *          Use @ref irq_restore instead.
  */
 MAYBE_INLINE unsigned irq_enable(void);
 
@@ -62,16 +68,26 @@ MAYBE_INLINE unsigned irq_enable(void);
  *
  * @param[in] state   state to restore
  *
- * @see     irq_enable
  * @see     irq_disable
  */
 MAYBE_INLINE void irq_restore(unsigned state);
 
 /**
+ * @brief   Test if IRQs are currently enabled
+ *
+ * @warning Use this function from thread context only. When used in interrupt
+ *          context the returned state may be incorrect.
+ *
+ * @return  false if IRQs are currently disabled
+ * @return  true if IRQs are currently enabled
+ */
+MAYBE_INLINE bool irq_is_enabled(void);
+
+/**
  * @brief   Check whether called from interrupt service routine
  * @return  true, if in interrupt service routine, false if not
  */
-MAYBE_INLINE int irq_is_in(void);
+MAYBE_INLINE bool irq_is_in(void);
 
 #ifdef IRQ_API_INLINED
 #include "irq_arch.h"

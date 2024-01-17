@@ -31,7 +31,7 @@
 #include "srf08.h"
 #include "srf08_params.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define SRF08_DEV_I2C       (dev->params.i2c)
@@ -54,7 +54,6 @@ int srf08_init(srf08_t *dev, const srf08_params_t *params)
     return 0;
 }
 
-
 int srf08_set_max_range(const srf08_t *dev, uint8_t max_range)
 {
     int status;
@@ -68,7 +67,6 @@ int srf08_set_max_range(const srf08_t *dev, uint8_t max_range)
     return status;
 }
 
-
 int srf08_set_max_gain(const srf08_t *dev, uint8_t gain)
 {
     int status;
@@ -81,7 +79,6 @@ int srf08_set_max_gain(const srf08_t *dev, uint8_t gain)
 
     return status;
 }
-
 
 int srf08_get_distances(const srf08_t *dev, uint16_t *range_array,
                         int num_echos, srf08_mode_t ranging_mode)

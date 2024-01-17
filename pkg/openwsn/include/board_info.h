@@ -31,6 +31,12 @@
 #include "periph_conf.h"
 #include "timex.h"
 
+#if defined __has_include
+#  if __has_include ("openwsn_defs.h")
+#    include "openwsn_defs.h"
+#  endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -45,7 +51,6 @@ extern "C" {
 #define SCHEDULER_WAKEUP()                  /* unused by RIOT */
 #define SCHEDULER_ENABLE_INTERRUPT()        /* unused by RIOT */
 /** @} */
-
 
 /**
  * @name    OpenWSN platform dependent definitions

@@ -8,11 +8,18 @@
  * directory for more details.
  */
 
+#include "kernel_defines.h"
 #include "event/timeout.h"
+#if IS_USED(MODULE_ZTIMER_USEC)
+#include "ztimer/xtimer_compat.h"
+#else
+#include "xtimer.h"
+#endif
 
 static void _event_timeout_callback(void *arg)
 {
     event_timeout_t *event_timeout = (event_timeout_t *)arg;
+
     event_post(event_timeout->queue, event_timeout->event);
 }
 

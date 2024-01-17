@@ -36,7 +36,7 @@
 #include "msg.h"
 #endif /* MODULE_CORE_MSG */
 #include "mutex.h"
-#include "kernel_types.h"
+#include "sched.h"
 #include "rmutex.h"
 
 #ifdef MODULE_ZTIMER_XTIMER_COMPAT
@@ -147,6 +147,13 @@ void xtimer_init(void);
 static inline void xtimer_sleep(uint32_t seconds);
 
 /**
+ * @brief Pause the execution of a thread for some milliseconds
+ *
+ * @param[in] milliseconds  the amount of milliseconds the thread should sleep
+ */
+static inline void xtimer_msleep(uint32_t milliseconds);
+
+/**
  * @brief Pause the execution of a thread for some microseconds
  *
  * When called from an ISR, this function will spin and thus block the MCU for
@@ -168,6 +175,10 @@ static inline void xtimer_usleep64(uint64_t microseconds);
 
 /**
  * @brief Stop execution of a thread for some time
+ *
+ * @deprecated This function is deprecated as no XTIMER backend is currently
+ *             configured to run at more than 1 MHz, making nanoseconds accuracy
+ *             impossible to achieve.
  *
  * Don't expect nanosecond accuracy. As of now, this function just calls
  * xtimer_usleep(nanoseconds/1000).
@@ -410,7 +421,7 @@ static inline bool xtimer_less64(xtimer_ticks64_t a, xtimer_ticks64_t b);
  * @param[in]    us     timeout in microseconds relative
  *
  * @return       0, when returned after mutex was locked
- * @return       -1, when the timeout occcured
+ * @return       -1, when the timeout occurred
  */
 int xtimer_mutex_lock_timeout(mutex_t *mutex, uint64_t us);
 
@@ -421,7 +432,7 @@ int xtimer_mutex_lock_timeout(mutex_t *mutex, uint64_t us);
  * @param[in]    us     timeout in microseconds relative
  *
  * @return       0, when returned after rmutex was locked
- * @return       -1, when the timeout occcured
+ * @return       -1, when the timeout occurred
  */
 int xtimer_rmutex_lock_timeout(rmutex_t *rmutex, uint64_t us);
 
@@ -590,14 +601,14 @@ static inline int xtimer_msg_receive_timeout64(msg_t *msg, uint64_t timeout);
  */
 #define XTIMER_HZ_BASE (1000000ul)
 
-#ifndef XTIMER_HZ
+#if !defined(XTIMER_HZ) && !defined(MODULE_XTIMER_ON_ZTIMER)
 /**
  * @brief  Frequency of the underlying hardware timer
  */
 #define XTIMER_HZ XTIMER_HZ_BASE
 #endif
 
-#ifndef XTIMER_SHIFT
+#if !defined(XTIMER_SHIFT) && !defined(MODULE_XTIMER_ON_ZTIMER)
 #if (XTIMER_HZ == 32768ul)
 /* No shift necessary, the conversion is not a power of two and is handled by
  * functions in tick_conversion.h */
@@ -634,7 +645,7 @@ static inline int xtimer_msg_receive_timeout64(msg_t *msg, uint64_t timeout);
 #else
 #error "XTIMER_SHIFT cannot be derived for given XTIMER_HZ, verify settings!"
 #endif
-#else
+#elif !defined(MODULE_XTIMER_ON_ZTIMER)
 #error "XTIMER_SHIFT is set relative to XTIMER_HZ, no manual define required!"
 #endif
 

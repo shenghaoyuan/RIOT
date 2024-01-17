@@ -18,7 +18,6 @@
 #ifndef NET_GNRC_NETIF_IPV6_H
 #define NET_GNRC_NETIF_IPV6_H
 
-#include <assert.h>
 #include <kernel_defines.h>
 
 #include "evtimer_msg.h"
@@ -244,7 +243,7 @@ typedef struct {
 #endif /* MODULE_GNRC_IPV6_NIB */
 
     /**
-     * @brief   IPv6 auto-address configuration mode
+     * @brief   IPv6 auto-address configuration mode flags
      *
      * @note    Only available with module @ref net_gnrc_ipv6 "gnrc_ipv6"
      */

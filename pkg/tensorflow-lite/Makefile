@@ -11,19 +11,20 @@ TF_USEMODULE = $(filter $(TF_MODULES),$(USEMODULE))
 .PHONY: tensorflow-lite tensorflow-lite-%
 
 CFLAGS += -Wno-pedantic
+CFLAGS += -Wno-cast-align
 CFLAGS += -DTF_LITE_STATIC_MEMORY
 CFLAGS += -DTF_LITE_USE_GLOBAL_ROUND
 
 all: tensorflow-lite
 
 tensorflow-lite: $(TF_USEMODULE)
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/c -f $(CURDIR)/Makefile.$(PKG_NAME)-c
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/core/api -f $(CURDIR)/Makefile.$(PKG_NAME)-core
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/kernels -f $(CURDIR)/Makefile.$(PKG_NAME)-kernels
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/kernels/internal -f $(CURDIR)/Makefile.$(PKG_NAME)-kernels-internal
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/micro/kernels -f $(CURDIR)/Makefile.$(PKG_NAME)-micro-kernels
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/micro/memory_planner -f $(CURDIR)/Makefile.$(PKG_NAME)-memory
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/micro -f $(CURDIR)/Makefile.$(PKG_NAME)
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/c -f $(CURDIR)/Makefile.$(PKG_NAME)-c
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/core/api -f $(CURDIR)/Makefile.$(PKG_NAME)-core
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/kernels -f $(CURDIR)/Makefile.$(PKG_NAME)-kernels
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/kernels/internal -f $(CURDIR)/Makefile.$(PKG_NAME)-kernels-internal
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/micro/kernels -f $(CURDIR)/Makefile.$(PKG_NAME)-micro-kernels
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/micro/memory_planner -f $(CURDIR)/Makefile.$(PKG_NAME)-memory
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/micro -f $(CURDIR)/Makefile.$(PKG_NAME)
 
 tensorflow-lite-%:
-	"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/micro/examples/$* -f $(CURDIR)/Makefile.$(PKG_NAME)-$*
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/tensorflow/lite/micro/examples/$* -f $(CURDIR)/Makefile.$(PKG_NAME)-$*

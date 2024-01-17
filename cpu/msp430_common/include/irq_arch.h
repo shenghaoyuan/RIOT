@@ -23,14 +23,22 @@
 #ifndef IRQ_ARCH_H
 #define IRQ_ARCH_H
 
+#include <stdbool.h>
+#include <msp430.h>
 #include "irq.h"
-#include "cpu.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/*
+ * gcc warns for missing NOPs before/after interrupt enable/disable.
+ * so I added the NOP instructions, even though they might not be necessary
+ * due to following AND. // Kaspar
+ */
+
 extern volatile int __irq_is_in;
+#define _GENERAL_INTERRUPT_ENABLE   (0x0008)
 
 __attribute__((always_inline)) static inline unsigned int irq_disable(void)
 {
@@ -38,16 +46,10 @@ __attribute__((always_inline)) static inline unsigned int irq_disable(void)
     __asm__ volatile(
         "mov.w r2, %[state]"                "\n\t"
         "bic %[gie], r2"                    "\n\t"
-        /*
-         * BEWARE: IRQs remain enabled for one instruction after clearing the
-         * GIE bit in the status register (r2). Thus, the next instruction is
-         * not only used to sanitize the IRQ state, but also delays the actual
-         * critical section by one CPU cycle, so that IRQs are indeed disabled
-         * by then.
-         */
+        "nop"                               "\n\t"
         "and %[gie], %[state]"              "\n\t"
         : [state]   "=r"(state)
-        : [gie]     "i"(GIE)
+        : [gie]     "i"(_GENERAL_INTERRUPT_ENABLE)
         : "memory"
     );
 
@@ -59,16 +61,12 @@ __attribute__((always_inline)) static inline unsigned int irq_enable(void)
     unsigned int state;
     __asm__ volatile(
         "mov.w r2, %[state]"                "\n\t"
+        "nop"                               "\n\t"
         "bis %[gie], r2"                    "\n\t"
-        /*
-         * BEWARE: IRQs remain disabled for one instruction after setting the
-         * GIE bit in the status register (r2). Thus, the next instruction is
-         * not only used to sanitize the IRQ state, but also ensures that the
-         * first instruction after this function is run with IRQs enabled.
-         */
+        "nop"                               "\n\t"
         "and %[gie], %[state]"              "\n\t"
         : [state]   "=r"(state)
-        : [gie]     "i"(GIE)
+        : [gie]     "i"(_GENERAL_INTERRUPT_ENABLE)
         : "memory"
     );
 
@@ -79,18 +77,29 @@ __attribute__((always_inline)) static inline void irq_restore(unsigned int state
 {
     __asm__ volatile(
         "bis %[state], r2"                    "\n\t"
+        "nop"                                 "\n\t"
         : /* no outputs */
         : [state]   "r"(state)
         : "memory"
     );
-    /* BEWARE: IRQs remain disabled for up to one CPU cycle after this function
-     * call. But that doesn't seem to be harmful.
-     */
 }
 
-__attribute__((always_inline)) static inline int irq_is_in(void)
+__attribute__((always_inline)) static inline bool irq_is_in(void)
 {
     return __irq_is_in;
+}
+
+__attribute__((always_inline)) static inline bool irq_is_enabled(void)
+{
+    unsigned int state;
+    __asm__ volatile(
+        "mov.w r2,%[state]"                   "\n\t"
+        : [state]   "=r"(state)
+        : /* no inputs */
+        : "memory"
+    );
+
+    return (state & GIE);
 }
 
 #ifdef __cplusplus

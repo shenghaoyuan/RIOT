@@ -17,10 +17,10 @@
  * Additionally, it has an OLED display connected via I2C on board.
  *
  * For detailed information about the configuration of ESP32 boards, see
- * section \ref esp32_comm_periph "Common Peripherals".
+ * section \ref esp32_peripherals "Common Peripherals".
  *
  * @note
- * Most definitions can be overridden by an \ref esp32_app_spec_conf
+ * Most definitions can be overridden by an \ref esp32_application_specific_configurations
  * "application-specific board configuration".
  *
  * @file
@@ -68,14 +68,13 @@
 #endif
 /** @} */
 
-
 /**
  * @name   I2C configuration
  *
  * Only I2C interface I2C_DEV(0) is used.
  *
  * @note The GPIOs listed in the configuration are only initialized as I2C
- * signals when module `perpih_i2c` is used. Otherwise they are not
+ * signals when module `periph_i2c` is used. Otherwise they are not
  * allocated and can be used for other purposes.
  *
  * @{
@@ -91,12 +90,11 @@
 #endif
 /** @} */
 
-
 /**
  * @name   PWM channel configuration
  *
  * @note As long as the according PWM device is not initialized with
- * the ```pwm_init```, the GPIOs declared for this device can be used
+ * the `pwm_init`, the GPIOs declared for this device can be used
  * for other purposes.
  *
  * @{
@@ -117,7 +115,7 @@
  *
  * @note The GPIOs listed in the configuration are first initialized as SPI
  * signals when the corresponding SPI interface is used for the first time
- * by either calling the ```spi_init_cs``` function or the ```spi_acquire```
+ * by either calling the `spi_init_cs` function or the `spi_acquire`
  * function. That is, they are not allocated as SPI signals before and can
  * be used for other purposes as long as the SPI interface is not used.
  *
@@ -166,7 +164,6 @@
          GPIO9 and GPIO10 are not available for UART1 as configured
 #endif
 /** @} */
-
 
 #ifdef __cplusplus
 } /* end extern "C" */

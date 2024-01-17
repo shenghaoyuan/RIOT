@@ -63,7 +63,10 @@ files. Two files will be sources of configuration during the generation of the
 final header file: `app.config` and `user.config`, which should be placed
 inside the application's folder. `app.config` sets default configuration
 values for the particular application, the user can override them by setting
-them in `user.config`.
+them in `user.config`. Additionally, further `.config` files can be added to
+the variable `KCONFIG_ADD_CONFIG`, which will be applied _after_ default CPU and
+board configurations, `app.config` and `user.config`. This means that they will
+have priority.
 
 Let's say that the `SOCK_UTIL_SCHEME_MAXLEN` symbol in `sock_util` module needs
 to be configured. The `user.config` file could look like:
@@ -86,17 +89,28 @@ be placed in the application's folder. For an example of this you can check
 the [tests/kconfig](https://github.com/RIOT-OS/RIOT/tree/master/tests/kconfig)
 application.
 
+## Configuration via environment variables                {#env-config-kconfig}
+For easy debugging of configuration or testing new modules by compiling them
+into existing applications, one can also use environment variables prefixed by
+`RIOT_CONFIG_`. To achieve the same configuration exemplified in
+@ref configure-using-files, e.g., you could also use
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.sh}
+RIOT_CONFIG_KCONFIG_MODULE_SOCK_UTIL=1 \
+RIOT_CONFIG_SOCK_UTIL_SCHEME_MAXLEN=24 \
+    make
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+All the checks that apply for `.config` files also are done with this approach.
+
+Mind that this is only meant to be used during development. In production,
+please set the configuration via `.config` files.
+
 ## A note on the usage of CFLAGS
 When a certain module is being configured via Kconfig the configuration macro
 will not longer be overridable by means of CFLAGS (e.g. set on the
 compilation command or on a Makefile). Consider this if you are getting a
 'redefined warning'.
-
-## A note on the usage of the 'clean' command
-When using Kconfig as the configurator for RIOT, configuration symbols may be
-used in Makefiles through the build system. For this to work properly make
-sure that when cleaning an application you call `make clean && make all`,
-instead of `make clean all`.
 
 ---
 # Integration into the build system    {#kconfig-integration-into-build-system}
@@ -106,7 +120,7 @@ The integration of Kconfig into the build system is mainly done in
 
 ## Steps during the build process                {#kconfig-steps-build-process}
 
-![Ouput of every step of the build process](kconfig_integration.svg)
+![Output of every step of the build process](kconfig_integration.svg)
 
 ### 0. Module dependency resolution
 Currently, the resolution of module dependencies is performed by the build
@@ -134,19 +148,24 @@ Kconfig symbol as documented in [Appendix A](#kconfig-appendix-a).
 
 ### 2. Merging all configuration sources         {#kconfig-steps-merge-configs}
 In this step configuration values are taken from multiple sources and merged
-into a single `merged.config` configuration file. This file is temporary and is
+into a single `out.config` configuration file. This file is temporary and is
 removed on clean. If the user needs to save a particular configuration
 set, a backup has to be saved (this can be done using the menuconfig interface)
 so it can be loaded later in this step.
 
-To accomplish merging of multiple input files, the `mergeconfig` script is
+To accomplish merging of multiple input files, the `genconfig` script is
 used.  Note that **the order matters**: existing configuration values are
 merged in the order expressed in the input section, where the last value
 assigned to a parameter has the highest priority. If no configuration files are
 available all default values will be applied.
 
-`merged.config` is the only configuration input for the `autoconf.h` in the
+`out.config` is the only configuration input for the `autoconf.h` in the
 [generation step](#kconfig-steps-header-gen).
+
+Additionally this step generates a file `out.config.d` which holds the
+information of all the used Kconfig files in Makefile format. This file is
+included by the build system and allows to re-trigger the generation of
+`out.conf` whenever a Kconfig file is modified.
 
 #### Input
 - Optional:
@@ -154,7 +173,7 @@ available all default values will be applied.
     - `$ (APPDIR)/user.config`: Configurations saved by user.
 
 #### Output
-- `$ (GENERATED_DIR)/merged.config` file.
+- `$ (GENERATED_DIR)/out.config` file.
 
 ### 3. Menuconfig execution (optional)
 Menuconfig is a graphical interface for software configuration. It is used for
@@ -162,7 +181,7 @@ the configuration of the Linux kernel. This section explains the process
 that occurs when RIOT is being configured using the menuconfig interface.
 
 The main `Kconfig` file is used in this step to show the configurable
-parameters of the system. Kconfig will filter innaplicable parameters (i.e.
+parameters of the system. Kconfig will filter inapplicable parameters (i.e.
 parameters exposed by modules that are not being used) based on the file
 `$ (GENERATED_DIR)/Kconfig.dep` generated in step 1.
 
@@ -176,26 +195,29 @@ information see
 Note that if Kconfig is not used to configure a module, the corresponding
 header files default values will be used.
 
-`merged.config` is one of the inputs for menuconfig. This means that any
+`out.config` is one of the inputs for menuconfig. This means that any
 configuration that the application defines in the `app.config` or a backup
 configuration from the user in `user.config` are taken into account on the
 first run (see [Appendix C](#kconfig-appendix-c)).
 
 In this step the user chooses configuration values (or selects the minimal
-configuration) and saves it to the `merged.config` file. Here the user can
+configuration) and saves it to the `out.config` file. Here the user can
 choose to save a backup configuration file for later at a different location
 (e.g. a `user.config` file in the application folder).
+
+If any changes occur to `out.config`, the
+[generation of autoconf.h](#kconfig-steps-header-gen) is executed automatically.
 
 #### Input
 - `/Kconfig` file.
 - Optional:
     - `$ (APPDIR)/app.config`
     - `$ (APPDIR)/user.config`
-    - `$ (GENERATED_DIR)/merged.config`
+    - `$ (GENERATED_DIR)/out.config`
 
 #### Output
-- Updated `$ (GENERATED_DIR)/merged.config` file.
-- `$ (GENERATED_DIR)/merged.config.old` backup file.
+- Updated `$ (GENERATED_DIR)/out.config` file.
+- `$ (GENERATED_DIR)/out.config.old` backup file.
 
 ### 4. Generation of the autoconf.h header          {#kconfig-steps-header-gen}
 With the addition of Kconfig a dependency has been added to the build
@@ -205,30 +227,31 @@ that should be used to configure modules in RIOT:
 `CONFIG_<module>_<parameter>`.
 
 In order to generate the `autoconf.h` file the `genconfig` script is used.
-Inputs for this script are the main `Kconfig` file and `merged.config`
+Inputs for this script are the main `Kconfig` file and `out.config`
 configuration file, which holds the selected values for the exposed parameters.
 
 #### Input:
-- `$ (GENERATED_DIR)/merged.config` file.
+- `$ (GENERATED_DIR)/out.config` file.
 - Main `Kconfig` file exposing configuration of modules.
 
 #### Output:
 - `$ (GENERATED_DIR)/autoconf.h` configuration header file.
-- `$ (GENERATED_DIR)/out.config` file.
+- Optional:
+    - `$ (GENERATED_DIR)/deps/*/*.h` header files that allow incremental builds
 
 
 ### Summary of files
 These files are defined in `kconfig.mk`.
 
-| File              | Description |
-| ----------------- | ----------- |
-| `Kconfig`           | Defines configuration options of modules. |
-| `Kconfig.dep`       | Holds a list of the modules that are being compiled. |
-| `app.config`        | Holds default application configuration values. |
-| `user.config`       | Holds configuration values applied by the user. |
-| `merged.config`     | Holds configuration from multiple sources. Used to generate header. |
-| `autoconf.h`        | Header file containing the macros that applied the selected configuration. |
-| `out.config`        | Configuration file containing all the symbols defined in `autoconf.h`. |
+| File           | Description |
+| ---------------| ----------- |
+| `Kconfig`      | Defines configuration options of modules. |
+| `Kconfig.dep`  | Holds a list of the modules that are being compiled. |
+| `app.config`   | Holds default application configuration values. |
+| `user.config`  | Holds configuration values applied by the user. |
+| `out.config`   | Configuration file containing all the symbols defined in `autoconf.h`. |
+| `out.config.d` | Dependency file of `out.config` containing the list of Kconfig files used to generate it. |
+| `autoconf.h`   | Header file containing the macros that applied the selected configuration. |
 
 ## Kconfig symbols in Makefiles
 As '.config' files have Makefile syntax they can be included when building,
@@ -254,10 +277,10 @@ application's Makefile. The symbols will not be defined until after including
 ---
 # Transition phase                                  {#kconfig-transition-phase}
 ## Making configuration via Kconfig optional  {#kconfig-configuration-optional}
-During transition to the usage of Kconfig as the main configurator for RIOT,
-the default behavior will be the traditional one: expose configuration options
-in header files and use CFLAGS as inputs. To allow optional configuration via
-Kconfig, a convention will be used when writing Kconfig files.
+During transition to the usage of Kconfig as the main configuration tool for
+RIOT, the default behavior will be the traditional one: expose configuration
+options in header files and use CFLAGS as inputs. To allow optional
+configuration via Kconfig, a convention will be used when writing Kconfig files.
 
 Modules should be contained in their own `menuconfig` entries, this way the user
 can choose to enable the configuration via Kconfig for an specific module.
@@ -349,7 +372,9 @@ Features may be provided by any hierarchy symbol. Usually symbols are selected
 from more specific to less specific. This means that a `CPU_MODEL_<model>`
 symbol usually would select the correspondent `CPU_FAM_<family>` symbol,
 which would in turn select the `CPU_CORE_<core>`. This may change in some cases
-where `CPU_COMMON_` symbols are defined to avoid repetition.
+where `CPU_COMMON_` symbols are defined to avoid repetition. For convenience and
+if it makes sense within a CPU vendor family, it's also allowed to use
+intermediate grouping levels, like `CPU_LINE_<xxx>` used for STM32.
 
 In addition to the symbols of the hierarchy described above, a default value
 to the `CPU` symbol should be assigned, which will match the value of the `CPU`
@@ -436,9 +461,37 @@ config BOARD_SAMR21_XPRO
     select HAS_RIOTBOOT
 ```
 
+### Default configurations
+
+Boards, common board directories, CPUs and common CPU directories may need to
+override default configuration values. Visible configuration symbols are
+configurable by the user and show on the menuconfig interface. `.config` files
+are used to set their values. To allow multiple sources of `.config` files,
+there are two Makefile variables developers should use: `KCONFIG_CPU_CONFIG` for
+sources added by the CPU or common CPU directories, and `KCONFIG_BOARD_CONFIG`
+for sources added by the board or common board directories. This ensures the
+correct priority of the configurations.
+
+Currently the `Makefile.features` infrastructure is used to populate the
+configuration sources. As the order in which `.config` files are merged matters,
+configuration sources should be ordered from more generic to more specific.
+Because board's `Makefile.features` is included before CPU's `Makefile.features`
+it is important to utilize two different lists of configuration sources. For
+instance, if `cpu/cortexm_common` adds its configuration, `cpu/stm32` should add
+its configuration after it, and `boards/stm32f769i-disco` after it.
+
+```Makefile
+include $(RIOTCPU)/cortexm_common/Makefile.features
+
+# Add stm32 configs after including cortexm_common so stm32 takes precedence
+ifeq (1, $(TEST_KCONFIG))
+  KCONFIG_CPU_CONFIG += $(RIOTCPU)/stm32/stm32.config
+endif
+```
+
 ## Summary of reserved Kconfig prefixes
 The following symbol prefixes have been assigned particular semantics and are
-reserved for the cases described bellow:
+reserved for the cases described below:
 
 <!-- Keep the table in alphabetical order -->
 | Prefix | Description |
@@ -451,10 +504,11 @@ reserved for the cases described bellow:
 | `CPU_FAM_` | Models a family of CPUs |
 | `CPU_MODEL_` | Models a particular model of CPU |
 | `HAS_` | Models a [feature](build-system-basics.html#features) |
-| `KCONFIG_MODULE_` | Used during transition to enable configuration of a module via Kconfig |
-| `KCONFIG_PKG_` | Used during transition to enable configuration of a package via Kconfig |
-| `MODULE_` | Models a [RIOT module](creating-modules.html#creating-modules) |
-| `PKG_` | Models an [external package](group__pkg.html) |
+| `KCONFIG_USEMODULE_` | Used during transition to enable configuration of a module via Kconfig |
+| `KCONFIG_USEPKG_` | Used during transition to enable configuration of a package via Kconfig |
+| `HAVE_` | Models a feature not present in makefiles, will be unified in the future |
+| `USEMODULE_` | Models a [RIOT module](creating-modules.html#creating-modules). Generated from `USEMODULE` variable |
+| `USEPKG_` | Models an [external package](group__pkg.html). Generated from `USEPKG` variable |
 
 ---
 # Appendixes                                              {#kconfig-appendixes}
@@ -548,14 +602,18 @@ the menuconfig graphical interface or writing '.config' files by hand.
 As explained in the
 ['Configuration sources merging step'](#kconfig-steps-merge-configs)
 of the configuration process, configuration from multiple sources are loaded to
-create a single `merged.config` file, and the order of merging matters: last
+create a single `out.config` file, and the order of merging matters: last
 file has priority.
 
-While editing values directly via '.config' files `merged.config` will be
-re-built. Once the user decides to edit `merged.config` directly using
-menuconfig, the file will not be re-built anymore, and any changes by manually
-editing the source files will have no effect. To go back to manual edition
-a `make clean` has to be issued in the application directory.
+While editing values directly via '.config' files `out.config` will be
+re-built. The user can also use menuconfig interface to modify the configuration
+file (this is the recommended way, as it gives access to much more information
+regarding dependencies and default values of the symbols). Menuconfig will
+change `out.config` directly (a backup file `out.config.old` will be kept).
+
+**It is recommended to save backups of the configurations, as any change on the
+configuration sources would re-trigger the merging process and overwrite
+`out.config`.**
 
 ## Appendix D: A few key aspects while exposing a macro to Kconfig {#kconfig-appendix-d}
 A macro that holds a 0 or 1 is modelled in Kconfig as a `bool` symbol. References to this macro

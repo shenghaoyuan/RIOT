@@ -28,7 +28,7 @@
 #include "periph/i2c.h"
 #include "hdc1000.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 static int16_t temp_cached, hum_cached;
@@ -133,7 +133,6 @@ int hdc1000_read(const hdc1000_t *dev, int16_t *temp, int16_t *hum)
     xtimer_usleep(CONFIG_HDC1000_CONVERSION_TIME);
     return hdc1000_get_results(dev, temp, hum);
 }
-
 
 int hdc1000_read_cached(const hdc1000_t *dev, int16_t *temp, int16_t *hum)
 {

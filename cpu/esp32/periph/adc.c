@@ -31,7 +31,7 @@
 #include "soc/sens_reg.h"
 #include "soc/sens_struct.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /* declaration of external functions */
@@ -147,7 +147,6 @@ int adc_init(adc_t line)
 
     return 0;
 }
-
 
 int32_t adc_sample(adc_t line, adc_res_t res)
 {

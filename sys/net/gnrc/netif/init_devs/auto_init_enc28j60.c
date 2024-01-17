@@ -53,17 +53,16 @@ static gnrc_netif_t _netif[ENC28J60_NUM];
  */
 static char stack[ENC28J60_NUM][ENC28J60_MAC_STACKSIZE];
 
-
 void auto_init_enc28j60(void)
 {
     for (unsigned i = 0; i < ENC28J60_NUM; i++) {
         LOG_DEBUG("[auto_init_netif] initializing enc28j60 #%u\n", i);
 
         /* setup netdev device */
-        enc28j60_setup(&dev[i], &enc28j60_params[i]);
+        enc28j60_setup(&dev[i], &enc28j60_params[i], i);
         gnrc_netif_ethernet_create(&_netif[i], stack[i], ENC28J60_MAC_STACKSIZE,
                                    ENC28J60_MAC_PRIO, "enc28j60",
-                                   (netdev_t *)&dev[i]);
+                                   &dev[i].netdev);
     }
 }
 /** @} */

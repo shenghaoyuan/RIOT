@@ -16,7 +16,7 @@
  *
  * @}
  */
-#include <assert.h>
+
 #include <errno.h>
 #include <inttypes.h>
 #include <stdint.h>
@@ -29,9 +29,8 @@
 #include "periph/gpio.h"
 #include "periph/uart.h"
 #include "thread.h"
-#include "xtimer.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 int dfplayer_init(dfplayer_t *dev, const dfplayer_params_t *params)
@@ -47,7 +46,7 @@ int dfplayer_init(dfplayer_t *dev, const dfplayer_params_t *params)
     mutex_init(&dev->mutex);
     dev->sync = locked;
 
-    if (dev->busy_pin != GPIO_UNDEF) {
+    if (gpio_is_valid(dev->busy_pin)) {
         if (gpio_init(dev->busy_pin, GPIO_IN)) {
             DEBUG("[dfplayer] Initializing busy pin failed\n");
             return -EIO;
@@ -101,7 +100,7 @@ int dfplayer_get_state(dfplayer_t *dev, dfplayer_state_t *state)
         return -EINVAL;
     }
 
-    if (dev->busy_pin != GPIO_UNDEF) {
+    if (gpio_is_valid(dev->busy_pin)) {
         if (!gpio_read(dev->busy_pin)) {
             *state = DFPLAYER_STATE_PLAYING;
             return 0;

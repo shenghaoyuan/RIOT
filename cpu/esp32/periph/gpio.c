@@ -18,9 +18,10 @@
  * @}
  */
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
+#include <assert.h>
 #include <stdbool.h>
 
 #include "log.h"
@@ -247,7 +248,6 @@ const char* _gpio_pin_usage_str[] =
 {
     "GPIO", "ADC", "CAN", "DAC", "EMAC", "I2C", "PWM", "SPI", "SPI Flash", "UART", "N/A"
 };
-
 
 #define FUN_GPIO   2 /* the function number for all GPIOs */
 
@@ -528,7 +528,6 @@ const char* gpio_get_pin_usage_str(gpio_t pin)
 {
     return _gpio_pin_usage_str[_gpio_pin_usage[((pin < GPIO_PIN_NUMOF) ? pin : _NOT_EXIST)]];
 }
-
 
 void gpio_pullup_dis (gpio_t pin)
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Freie Universität Berlin
+ * Copyright (C) 2020 ML!PA Consulting GmbH
  *
  * This file is subject to the terms and conditions of the GNU Lesser
  * General Public License v2.1. See the file LICENSE in the top level
@@ -11,169 +11,369 @@
  * @{
  *
  * @file
- * @brief       Test application for the LIS2DH12 accelerometer driver
+ * @brief       Test application for LIS2DH12 accelerometer driver
  *
- * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
+ * @author      Jan Mohr <jan.mohr@ml-pa.com>
+ * @author      Benjamin Valentin <benjamin.valentin@ml-pa.com>
  *
  * @}
  */
 
 #include <stdio.h>
-
+#include <string.h>
+#include <stdlib.h>
+#include <limits.h>
 #include "fmt.h"
-#include "xtimer.h"
-#include "mutex.h"
+#include "thread.h"
+#include "shell.h"
+
 #include "lis2dh12.h"
 #include "lis2dh12_params.h"
+#include "lis2dh12_registers.h"
 
- /* delay between sensor data reads */
-#define DELAY       (100UL * US_PER_MS)
+#define ENABLE_DEBUG 0
+#include "debug.h"
 
-/* allocate some memory to hold one formatted string for each sensor output, so
- * one string for the X, Y, and Z reading, respectively */
-static char str_out[3][8];
+/* device specific */
+#define NUM_FIFO_VALUES 32
 
 /* allocate device descriptor */
 static lis2dh12_t dev;
 
-#ifdef MODULE_LIS2DH12_INT
-/* control interrupt */
-typedef struct {
-    uint8_t line;
-    mutex_t *lock;
-    uint8_t *flags;
-} lis_ctx;
+void lis2dh12_test_init(void) {
 
-/* timer lock */
-static uint8_t isr_flags;
-static mutex_t isr_mtx = MUTEX_INIT_LOCKED;
-static lis_ctx ctx[2] = {
-    {
-        .line  = 1,
-        .lock  = &isr_mtx,
-        .flags = &isr_flags,
-    }, {
-        .line  = 2,
-        .lock  = &isr_mtx,
-        .flags = &isr_flags,
+    if (IS_USED(MODULE_LIS2DH12_SPI)) {
+        puts("using SPI mode, for I2C mode select the lis2dh12_i2c module");
+    } else {
+        puts("using I2C mode, for SPI mode select the lis2dh12_spi module");
     }
-};
 
-/* interrupt callback function. */
-static void lis2dh12_int_cb(void* _ctx) {
-    lis_ctx *control = _ctx;
-
-    *control->flags |= control->line;
-
-    mutex_unlock(control->lock);
-}
-
-/* print interrupt register */
-static void lis2dh12_int_reg_content(lis2dh12_t *dev, uint8_t pin){
-
-    assert(pin == LIS2DH12_INT1 || pin == LIS2DH12_INT2);
-
-    uint8_t buffer;
-    lis2dh12_read_int_src(dev, &buffer, pin);
-
-    printf("content SRC_Reg_%d: 0x%02x\n", pin, buffer);
-    printf("\t XL %d\n", !!(buffer & LIS2DH12_INT_SRC_XL));
-    printf("\t XH %d\n", !!(buffer & LIS2DH12_INT_SRC_XH));
-    printf("\t YL %d\n", !!(buffer & LIS2DH12_INT_SRC_YL));
-    printf("\t YH %d\n", !!(buffer & LIS2DH12_INT_SRC_YH));
-    printf("\t ZL %d\n", !!(buffer & LIS2DH12_INT_SRC_ZL));
-    printf("\t ZH %d\n", !!(buffer & LIS2DH12_INT_SRC_ZH));
-    printf("\t IA %d\n", !!(buffer & LIS2DH12_INT_SRC_IA));
-}
-#endif
-
-int main(void)
-{
-
-#ifdef MODULE_LIS2DH12_INT
-    uint8_t flags = 0;
-#endif
-
-    puts("LIS2DH12 accelerometer driver test application\n");
-
-    puts("Initializing LIS2DH12 sensor... ");
+    /* init lis */
     if (lis2dh12_init(&dev, &lis2dh12_params[0]) == LIS2DH12_OK) {
-        puts("[OK]");
+        puts("lis2dh12 [Initialized]");
     }
     else {
-        puts("[Failed]\n");
-        return 1;
+        puts("lis2dh12 [Failed]");
     }
+
+    /* change LIS settings */
+    lis2dh12_set_resolution(&dev, LIS2DH12_POWER_LOW);
+    lis2dh12_set_datarate(&dev, LIS2DH12_RATE_100HZ);
+    lis2dh12_set_scale(&dev, LIS2DH12_SCALE_16G);
+
+    /* configure FIFO */
+    lis2dh12_fifo_t fifo_cfg = {
+        .FIFO_mode = LIS2DH12_FIFO_MODE_STREAM,
+    };
+
+    lis2dh12_set_fifo(&dev, &fifo_cfg);
+}
 
 #ifdef MODULE_LIS2DH12_INT
-    /* enable interrupt Pins */
-    if (lis2dh12_params[0].int1_pin != GPIO_UNDEF) {
-        /* create and set the interrupt params */
-        lis2dh12_int_params_t params_int1 = {
-            .int_type = LIS2DH12_INT_TYPE_I1_IA1,
-            .int_config = LIS2DH12_INT_CFG_XLIE,
-            .int_threshold = 31,
-            .int_duration = 1,
-            .cb = lis2dh12_int_cb,
-            .arg = &ctx[0],
-        };
-        lis2dh12_set_int(&dev, &params_int1, LIS2DH12_INT1);
-    }
+void* lis2dh12_test_process(void* arg) {
+    (void) arg;
 
-    /* create and set the interrupt params */
-    if (lis2dh12_params[0].int2_pin != GPIO_UNDEF) {
-        lis2dh12_int_params_t params_int2 = {
-            .int_type = LIS2DH12_INT_TYPE_I2_IA2,
-            .int_config = LIS2DH12_INT_CFG_YLIE,
-            .int_threshold = 31,
-            .int_duration = 1,
-            .cb = lis2dh12_int_cb,
-            .arg = &ctx[1],
-        };
-        lis2dh12_set_int(&dev, &params_int2, LIS2DH12_INT2);
-    }
-#endif
+    /* start processing */
+    DEBUG("[Process]: start process\n");
 
     while (1) {
 
-#ifdef MODULE_LIS2DH12_INT
-        if (xtimer_mutex_lock_timeout(&isr_mtx, DELAY) == 0) {
-            flags = isr_flags;
-            isr_flags = 0;
-        }
+        /* wait for interrupt */
+        int int1_src = lis2dh12_wait_event(&dev, LIS2DH12_INT1, false);
 
-        /* check interrupt 1 and read register */
-        if (flags & 0x1) {
-            printf("reads interrupt %d\n", LIS2DH12_INT1);
-            lis2dh12_int_reg_content(&dev, LIS2DH12_INT1);
-            flags &= ~(0x1);
-        }
-        /* check interrupt 2 and read register */
-        if (flags & 0x2) {
-            printf("reads interrupt %d\n", LIS2DH12_INT2);
-            lis2dh12_int_reg_content(&dev, LIS2DH12_INT2);
-            flags &= ~(0x2);
-        }
-#else
-        xtimer_usleep(DELAY);
-#endif
-
-        /* read sensor data */
-        int16_t data[3];
-        if (lis2dh12_read(&dev, data) != LIS2DH12_OK) {
-            puts("error: unable to retrieve data from sensor");
+        if (int1_src <= 0) {
+            printf("error: %d\n", int1_src);
             continue;
         }
 
+        if (LIS2DH12_INT_SRC_1(int1_src) & LIS2DH12_INT_SRC_IA) {
+            puts("event 1");
+        }
+        if (LIS2DH12_INT_SRC_2(int1_src) & LIS2DH12_INT_SRC_IA) {
+            puts("event 2");
+        }
+        if (LIS2DH12_INT_SRC_CLICK(int1_src) & LIS2DH12_INT_SRC_IA) {
+            puts("click event");
+        }
+    }
+
+    return NULL;
+}
+#endif /* MODULE_LIS2DH12_INT */
+
+static int shell_is2dh12_read(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+
+    lis2dh12_fifo_data_t data;
+
+    lis2dh12_read(&dev, &data);
+
+    /* Memory to print current data */
+    char str_out[3][8];
+
+    /* format data */
+    for (unsigned j = 0; j < 3; ++j) {
+        size_t len = fmt_s16_dfp(str_out[j], data.data[j], -3);
+        str_out[j][len] = '\0';
+    }
+
+    printf("X: %6s  Y: %6s  Z: %6s\n", str_out[0], str_out[1], str_out[2]);
+
+    return 0;
+}
+
+static int shell_is2dh12_read_fifo(int argc, char **argv)
+{
+    uint8_t num = NUM_FIFO_VALUES;
+    lis2dh12_fifo_data_t data[NUM_FIFO_VALUES];
+
+    if (argc > 1) {
+        num = atoi(argv[1]);
+    }
+
+    num = lis2dh12_read_fifo_data(&dev, data, num);
+
+    /* print data */
+    for (unsigned i = 0; i < num; ++i) {
+
+        /* Memory to print current data */
+        char str_out[3][8];
+
         /* format data */
-        for (int i = 0; i < 3; i++) {
-            size_t len = fmt_s16_dfp(str_out[i], data[i], -3);
-            str_out[i][len] = '\0';
+        for (unsigned j = 0; j < 3; ++j) {
+            size_t len = fmt_s16_dfp(str_out[j], data[i].data[j], -3);
+            str_out[j][len] = '\0';
         }
 
-        /* print data to STDIO */
-        printf("X: %8s Y: %8s Z: %8s\n", str_out[0], str_out[1], str_out[2]);
+        printf("[%2u] X: %6s  Y: %6s  Z: %6s\n", i, str_out[0], str_out[1], str_out[2]);
     }
+
+    return 0;
+}
+
+static int shell_is2dh12_threshold(int argc, char **argv)
+{
+    uint8_t slot;
+    uint32_t mg;
+    uint32_t us = 0;
+    uint8_t axis = LIS2DH12_INT_CFG_XHIE
+                 | LIS2DH12_INT_CFG_YHIE
+                 | LIS2DH12_INT_CFG_ZHIE;
+
+    if (argc < 3) {
+        printf("usage: %s <slot> <mg> [µs]\n", argv[0]);
+        return -1;
+    }
+
+    slot = atoi(argv[1]);
+    mg   = atoi(argv[2]);
+
+    if (argc > 3) {
+        us = atoi(argv[3]);
+    }
+
+    if (slot < 1 || slot > 2) {
+        puts("event slot must be either 1 or 2");
+        return -1;
+    }
+
+    lis2dh12_cfg_threshold_event(&dev, mg, us, axis, slot, LIS2DH12_INT1);
+
+    return 0;
+}
+
+static int shell_is2dh12_click(int argc, char **argv)
+{
+    uint32_t mg;
+    uint32_t us = 0;
+    uint32_t us_delay = 0;
+    uint32_t us_double = 0;
+    uint8_t clicks = LIS2DH12_CLICK_X_SINGLE
+                   | LIS2DH12_CLICK_Y_SINGLE
+                   | LIS2DH12_CLICK_Z_SINGLE;
+
+    if (argc < 2) {
+        printf("usage: %s <mg> [µs] [dead time µs] [double click µs]\n", argv[0]);
+        return -1;
+    }
+
+    mg = atoi(argv[1]);
+
+    if (argc > 2) {
+        us = atoi(argv[2]);
+    }
+
+    if (argc > 3) {
+        us_delay = atoi(argv[3]);
+    }
+
+    if (argc > 4) {
+        us_double = atoi(argv[4]);
+        clicks |= clicks << 1;
+    }
+
+    lis2dh12_cfg_click_event(&dev, mg, us, us_delay, us_double, clicks, LIS2DH12_INT1);
+
+    return 0;
+}
+
+static int shell_is2dh12_power(int argc, char **argv)
+{
+    bool on;
+
+    if (argc > 1 && (!strcmp(argv[1], "on") || !strcmp(argv[1], "1"))) {
+        on = true;
+    } else if (argc > 1 && (!strcmp(argv[1], "off") || !strcmp(argv[1], "0"))) {
+        on = false;
+    } else {
+        printf("usage: %s <on|off>\n", argv[0]);
+        return -1;
+    }
+
+    if (on) {
+        lis2dh12_poweron(&dev);
+    } else {
+        lis2dh12_poweroff(&dev);
+    }
+
+    return 0;
+}
+
+static int shell_is2dh12_set_resolution(int argc, char **argv)
+{
+    unsigned resolution = UINT_MAX;
+
+    const char* resolutions[4] = {
+        "off",
+        "8-bit",
+        "10-bit",
+        "12-bit",
+    };
+
+    if (argc > 1) {
+        resolution = atoi(argv[1]);
+    } else {
+        printf("current resolution: %s\n", resolutions[lis2dh12_get_resolution(&dev)]);
+    }
+
+    if (resolution > LIS2DH12_POWER_HIGH) {
+        printf("usage: %s <mode>\n", argv[0]);
+        puts("where <mode> is:");
+        for (unsigned i = 0; i < ARRAY_SIZE(resolutions); ++i) {
+            printf("\t%u: %s\n", i, resolutions[i]);
+        }
+        return -1;
+    }
+
+    lis2dh12_set_resolution(&dev, resolution);
+
+    return 0;
+}
+
+static int shell_is2dh12_set_rate(int argc, char **argv)
+{
+    unsigned rate = UINT_MAX;
+
+    if (argc > 1) {
+        rate = atoi(argv[1]);
+    } else {
+        printf("Current sampling rate: %u Hz\n", lis2dh12_get_datarate(&dev));
+    }
+
+    if (rate > LIS2DH12_RATE_VERYHIGH) {
+        printf("usage: %s <rate>\n", argv[0]);
+        puts("where <rate> is:");
+        puts("\t1: 1 Hz");
+        puts("\t2: 10 Hz");
+        puts("\t3: 25 Hz");
+        puts("\t4: 50 Hz");
+        puts("\t5: 100 Hz");
+        puts("\t6: 200 Hz");
+        puts("\t7: 400 Hz");
+        puts("\t8: 1620 Hz");
+        puts("\t9: 5376 Hz");
+        return -1;
+    }
+
+    lis2dh12_set_datarate(&dev, rate);
+
+    return 0;
+}
+
+static int shell_is2dh12_set_scale(int argc, char **argv)
+{
+    unsigned scale = UINT_MAX;
+
+    const uint8_t scales[] = {
+        2, 4, 8, 16
+    };
+
+    if (argc > 1) {
+        scale = atoi(argv[1]);
+    } else {
+        printf("current range: ± %ug\n", scales[lis2dh12_get_scale(&dev)]);
+    }
+
+    if (scale > LIS2DH12_SCALE_16G) {
+        printf("usage: %s <scale>\n", argv[0]);
+        puts("where <scale> is:");
+        for (unsigned i = 0; i < ARRAY_SIZE(scales); ++i) {
+            printf("\t%u: ± %ug\n", i, scales[i]);
+        }
+
+        return -1;
+    }
+
+    lis2dh12_set_scale(&dev, scale);
+
+    return 0;
+}
+
+static int shell_is2dh12_read_temp(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+
+    int16_t temp;
+    lis2dh12_read_temperature(&dev, &temp);
+
+    printf("%d.%02d °C\n", temp / 100, temp % 100);
+
+    return 0;
+}
+
+static const shell_command_t shell_commands[] = {
+    { "read", "Read acceleration data", shell_is2dh12_read },
+    { "read_fifo", "Read acceleration data from fifo", shell_is2dh12_read_fifo },
+    { "threshold", "Configure threshold event", shell_is2dh12_threshold },
+    { "click", "Configure click event", shell_is2dh12_click },
+    { "power", "Enable / Disable the sensor", shell_is2dh12_power },
+    { "resolution", "Get/Set resolution", shell_is2dh12_set_resolution },
+    { "rate", "Get/Set sampline rate", shell_is2dh12_set_rate },
+    { "scale", "Get/Set measuring range", shell_is2dh12_set_scale },
+    { "temp", "Read temperature data", shell_is2dh12_read_temp },
+    { NULL, NULL, NULL },
+};
+
+int main(void)
+{
+    /* init lis */
+    lis2dh12_test_init();
+
+#ifdef MODULE_LIS2DH12_INT
+    static char lis2dh12_process_stack[THREAD_STACKSIZE_MAIN];
+
+    /* processing lis2dh12 acceleration data */
+    thread_create(lis2dh12_process_stack, sizeof(lis2dh12_process_stack),
+                  THREAD_PRIORITY_MAIN - 1, THREAD_CREATE_STACKTEST,
+                  lis2dh12_test_process, NULL, "lis2dh12_process");
+#endif /* MODULE_LIS2DH12_INT */
+
+    /* running shell */
+    char line_buf[SHELL_DEFAULT_BUFSIZE];
+    shell_run(shell_commands, line_buf, SHELL_DEFAULT_BUFSIZE);
 
     return 0;
 }

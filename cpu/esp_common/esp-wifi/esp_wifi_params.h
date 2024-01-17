@@ -55,6 +55,42 @@
 #define ESP_WIFI_PASS       "ThisistheRIOTporttoESP"
 #endif
 
+#if defined(MODULE_ESP_WIFI_AP) || defined(DOXYGEN)
+
+/**
+ * @brief   Use dynamic SSID for the SoftAP
+ *
+ * If set to 1, the SSID for the SoftAP is generated dynamically by extending
+ * the defined SSID (`ESP_WIFI_SSID`) with the MAC address of the SoftAP
+ * interface used, e.g.: `RIOT_AP_aabbccddeeff`
+ */
+#ifndef ESP_WIFI_SSID_DYNAMIC
+#define ESP_WIFI_SSID_DYNAMIC   0
+#endif
+
+/**
+ * @brief   Whether SoftAP SSID should be hidden.
+ */
+#ifndef ESP_WIFI_SSID_HIDDEN
+#define ESP_WIFI_SSID_HIDDEN (0)
+#endif
+
+/**
+ * @brief   WiFi SoftAP maximum connections (max. 4).
+ */
+#ifndef ESP_WIFI_MAX_CONN
+#define ESP_WIFI_MAX_CONN    (4)
+#endif
+
+/**
+ * @brief   WiFi SoftAP beacon interval, in milliseconds.
+ */
+#ifndef ESP_WIFI_BEACON_INTERVAL
+#define ESP_WIFI_BEACON_INTERVAL (100)
+#endif
+
+#endif /* defined(ESP_WIFI_AP) || defined(DOXYGEN) */
+
 /**@}*/
 
 #ifdef __cplusplus

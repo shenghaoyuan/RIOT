@@ -24,6 +24,7 @@
 #include "cpu.h"
 #include "mutex.h"
 #include "assert.h"
+#include "nrf_clock.h"
 
 #include "periph_conf.h"
 #include "periph/cpuid.h"
@@ -35,7 +36,7 @@
 #include "net/gnrc/nettype.h"
 #endif
 
-#define ENABLE_DEBUG            (0)
+#define ENABLE_DEBUG            0
 #include "debug.h"
 
 /**
@@ -89,7 +90,6 @@ typedef enum {
     STATE_RX,                   /**< device is in receive mode */
     STATE_TX,                   /**< device is transmitting data */
 } state_t;
-
 
 /**
  * @brief   Since there can only be 1 nrfmin device, we allocate it right here
@@ -282,7 +282,6 @@ int nrfmin_set_state(netopt_state_t val)
     return sizeof(netopt_state_t);
 }
 
-
 /**
  * @brief   Radio interrupt routine
  */
@@ -400,6 +399,11 @@ static int nrfmin_init(netdev_t *dev)
     for (unsigned i = 0; i < CPUID_LEN; i++) {
         my_addr ^= cpuid[i] << (8 * (i & 0x01));
     }
+
+    /* the radio need the external HF clock source to be enabled */
+    /* @todo    add proper handling to release the clock whenever the radio is
+     *          idle */
+    clock_hfxo_request();
 
     /* power on the NRFs radio */
     NRF_RADIO->POWER = 1;

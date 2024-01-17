@@ -18,11 +18,12 @@
  * @}
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "fmt.h"
-#include "xtimer.h"
+#include "ztimer.h"
 #include "nimble_riot.h"
 #include "nimble_netif.h"
 #include "nimble_netif_conn.h"
@@ -41,11 +42,12 @@
 #if !IS_USED(MODULE_NIMBLE_AUTOCONN) && !IS_USED(MODULE_NIMBLE_STATCONN)
 static const char *_name_to_connect = NULL;
 
-static void _scan_for_name(uint8_t type, const ble_addr_t *addr, int8_t rssi,
+static void _scan_for_name(uint8_t type, const ble_addr_t *addr,
+                           const nimble_scanner_info_t *info,
                            const uint8_t *ad, size_t ad_len)
 {
     (void)type;
-    (void)rssi;
+    (void)info;
     int res;
     bluetil_ad_t adstruct;
 
@@ -232,7 +234,7 @@ static void _cmd_adv(const char *name)
 
     /* start listening for incoming connections */
     res = nimble_netif_accept(ad.buf, ad.pos, &_adv_params);
-    if (res != NIMBLE_NETIF_OK) {
+    if (res != 0) {
         printf("err: unable to start advertising (%i)\n", res);
     }
     else {
@@ -240,13 +242,51 @@ static void _cmd_adv(const char *name)
     }
 }
 
+static void _cmd_adv_direct(const char *addr_str)
+{
+    int res;
+    (void)res;
+    uint8_t addrn[BLE_ADDR_LEN];
+    ble_addr_t addr;
+    const struct ble_gap_adv_params _adv_params = {
+        .conn_mode = BLE_GAP_CONN_MODE_DIR,
+        .disc_mode = BLE_GAP_DISC_MODE_GEN,
+        .itvl_min = BLE_GAP_ADV_FAST_INTERVAL2_MIN,
+        .itvl_max = BLE_GAP_ADV_FAST_INTERVAL2_MAX,
+    };
+
+    /* make sure no advertising is in progress */
+    if (nimble_netif_conn_is_adv()) {
+        puts("err: advertising already in progress");
+        return;
+    }
+
+    /* parse and convert address -> RIOT uses big endian notation, NimBLE
+     * expects little endian... */
+    if (bluetil_addr_from_str(addrn, addr_str) == NULL) {
+        puts("err: unable to parse BLE address");
+        return;
+    }
+    addr.type = nimble_riot_own_addr_type;
+    bluetil_addr_swapped_cp(addrn, addr.val);
+
+    /* start advertising directed advertising with the given BLE address */
+    res = nimble_netif_accept_direct(&addr, BLE_HS_FOREVER, &_adv_params);
+    if (res != 0) {
+        printf("err: unable to start directed advertising (%i)\n", res);
+    }
+    else {
+        puts("success: started to send directed advertisements");
+    }
+}
+
 static void _cmd_adv_stop(void)
 {
     int res = nimble_netif_accept_stop();
-    if (res == NIMBLE_NETIF_OK) {
+    if (res == 0) {
         puts("canceled advertising");
     }
-    else if (res == NIMBLE_NETIF_NOTADV) {
+    else {
         puts("no advertising in progress");
     }
 }
@@ -257,20 +297,20 @@ static void _do_scan(nimble_scanner_cb cb, unsigned duration)
         printf("err: duration must be > 0\n");
         return;
     }
-    if (nimble_scanner_status() == NIMBLE_SCANNER_SCANNING) {
+    if (nimble_scanner_is_active()) {
         printf("err: scanner already active\n");
         return;
     }
     nimble_scanner_init(NULL, cb);
     nimble_scanlist_clear();
     nimble_scanner_start();
-    xtimer_usleep(duration);
+    ztimer_sleep(ZTIMER_MSEC, duration);
     nimble_scanner_stop();
 }
 
 static void _cmd_scan(unsigned duration)
 {
-    printf("scanning (for %ums) ...\n", (duration / 1000));
+    printf("scanning (for %ums) ...\n", duration);
     _do_scan(nimble_scanlist_update, duration);
     puts("done");
     nimble_scanlist_print();
@@ -332,7 +372,7 @@ static void _cmd_connect_scanlist(unsigned pos)
 static void _cmd_close(int handle)
 {
     int res = nimble_netif_close(handle);
-    if (res != NIMBLE_NETIF_OK) {
+    if (res != 0) {
         puts("err: unable to close connection with given handle");
     }
     else {
@@ -351,7 +391,7 @@ static void _cmd_update(int handle, int itvl, int timeout)
     params.max_ce_len = BLE_GAP_INITIAL_CONN_MAX_CE_LEN;
 
     int res = nimble_netif_update(handle, &params);
-    if (res != NIMBLE_NETIF_OK) {
+    if (res != 0) {
         puts("err: unable to update connection parameters for given handle");
     }
     else {
@@ -379,9 +419,9 @@ int _nimble_netif_handler(int argc, char **argv)
 {
     if ((argc == 1) || _ishelp(argv[1])) {
 #if !IS_USED(MODULE_NIMBLE_AUTOCONN) && !IS_USED(MODULE_NIMBLE_STATCONN)
-        printf("usage: %s [help|info|adv|scan|connect|close|update]\n", argv[0]);
+        printf("usage: %s [help|info|adv|scan|connect|close|update|chanmap]\n", argv[0]);
 #else
-        printf("usage: %s [help|info|close|update]\n", argv[0]);
+        printf("usage: %s [help|info|close|update|chanmap]\n", argv[0]);
 #endif
         return 0;
     }
@@ -394,11 +434,21 @@ int _nimble_netif_handler(int argc, char **argv)
         char *name = NULL;
         if (argc > 2) {
             if (_ishelp(argv[2])) {
-                printf("usage: %s adv [help|stop|<name>]\n", argv[0]);
+                printf("usage: %s adv [help|stop|direct <addr>|<name>]\n",
+                       argv[0]);
                 return 0;
             }
             if (memcmp(argv[2], "stop", 4) == 0) {
                 _cmd_adv_stop();
+                return 0;
+            }
+            if (memcmp(argv[2], "direct", 6) == 0) {
+                puts("DBG: direct adv");
+                if (argc < 4) {
+                    printf("error, no BLE address given\n");
+                    return 0;
+                }
+                _cmd_adv_direct(argv[3]);
                 return 0;
             }
             name = argv[2];
@@ -418,7 +468,7 @@ int _nimble_netif_handler(int argc, char **argv)
             }
             duration = atoi(argv[2]);
         }
-        _cmd_scan(duration * 1000);
+        _cmd_scan(duration);
     }
     else if (memcmp(argv[1], "connect", 7) == 0) {
         if ((argc < 3) || _ishelp(argv[2])) {
@@ -440,9 +490,9 @@ int _nimble_netif_handler(int argc, char **argv)
         if (!fmt_is_number(argv[2])) {
             unsigned duration = DEFAULT_SCAN_DURATION;
             if (argc > 3) {
-                duration = (unsigned)atoi(argv[3]);
+                duration = atoi(argv[3]);
             }
-            _cmd_connect_name(argv[2], duration * 1000);
+            _cmd_connect_name(argv[2], duration);
             return 0;
         }
 
@@ -472,6 +522,27 @@ int _nimble_netif_handler(int argc, char **argv)
         int itvl = atoi(argv[3]);
         int timeout = atoi(argv[4]);
         _cmd_update(handle, itvl, timeout);
+    }
+    else if ((memcmp(argv[1], "chanmap", 7) == 0)) {
+        int handle = nimble_netif_conn_get_next(NIMBLE_NETIF_CONN_INVALID,
+                                                NIMBLE_NETIF_GAP_CONNECTED);
+        if (handle == NIMBLE_NETIF_CONN_INVALID) {
+            printf("err: no BLE connection(s) found\n");
+            return 0;
+        }
+        puts("Used channels per Slot\n"
+             "Bitmap denotes channels in ascending order: CH36, ..., CH0\n"
+             "e.g. '1f ff ff ff ff' shows that all 37 data channels in use");
+        while (handle != NIMBLE_NETIF_CONN_INVALID) {
+            uint8_t map[5];
+            nimble_netif_used_chanmap(handle, map);
+            printf("[%02i] %02x %02x %02x %02x %02x\n", handle,
+                    (int)map[4], (int)map[3], (int)map[2],
+                    (int)map[1], (int)map[0]);
+            handle = nimble_netif_conn_get_next(handle,
+                                                NIMBLE_NETIF_GAP_CONNECTED);
+        }
+        return 0;
     }
     else {
         printf("unable to parse the command. Use '%s help' for more help\n",

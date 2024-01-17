@@ -12,13 +12,15 @@
 /
 /---------------------------------------------------------------------------*/
 
+#include <assert.h>
 #include <string.h>
 #include "cpu.h"
 #include "VIC.h"
-#include "xtimer.h"
+#include "ztimer.h"
+#include "timex.h"
 #include "diskio.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /* --- MCI configurations --- */
@@ -32,11 +34,9 @@
 /  occurred due to any interrupt by higher priority process or slow external memory, increasing
 /  N_BUF or decreasing MCLK_RW will solve it. */
 
-
 /* ----- Port definitions ----- */
 #define SOCKINS     !(FIO0PIN2 & 0x20)  /* Card detect switch */
 #define SOCKWP      (FIO0PIN2 & 0x04)   /* Write protect switch */
-
 
 /* ----- MMC/SDC command ----- */
 #define CMD0    (0)             /* GO_IDLE_STATE */
@@ -70,7 +70,6 @@
 #define CT_SD2      0x04        /* SD ver 2 */
 #define CT_SDC      (CT_SD1|CT_SD2) /* SD */
 #define CT_BLOCK    0x08        /* Block addressing */
-
 
 /*--------------------------------------------------------------------------
 
@@ -158,7 +157,6 @@ void Isr_GPDMA(void)
     VICVectAddr = 0;
 }
 
-
 /*-----------------------------------------------------------------------*/
 /* Ready for data reception                                              */
 /*-----------------------------------------------------------------------*/
@@ -210,7 +208,6 @@ static void ready_reception(unsigned int blks, unsigned int bs)
     MCI_DATA_CTRL  = n | 0xB;               /* Start to receive data blocks */
 }
 
-
 /*-----------------------------------------------------------------------*/
 /* Start to transmit a data block                                        */
 /*-----------------------------------------------------------------------*/
@@ -223,7 +220,6 @@ static void start_transmission(unsigned char blks)
 {
     unsigned int n;
     unsigned long dma_ctrl;
-
 
     /* ------ Setting up GPDMA Ch-0 ------ */
 
@@ -262,9 +258,6 @@ static void start_transmission(unsigned char blks)
 }
 #endif  /* _READONLY */
 
-
-
-
 /*-----------------------------------------------------------------------*/
 /* Stop data transfer                                                    */
 /*-----------------------------------------------------------------------*/
@@ -277,9 +270,6 @@ static void stop_transfer(void)
     GPDMA_CH0_CFG &= 0xFFF80420;    /* Disable DMA ch-0 */
 }
 
-
-
-
 /*-----------------------------------------------------------------------*/
 /* Power Control (Device dependent)                                      */
 /*-----------------------------------------------------------------------*/
@@ -288,7 +278,6 @@ static int power_status(void)
 {
     return (MCI_POWER & 3) ? 1 : 0;
 }
-
 
 static void power_on(void)
 {
@@ -327,16 +316,14 @@ static void power_on(void)
     //RegisterIrq(GPDMA_INT, Isr_GPDMA, PRI_LOWEST-1);
     install_irq(GPDMA_INT, Isr_GPDMA, 5);
 
-
     /* Power-on (VCC is always tied to the socket on this board) */
     MCI_POWER = 0x01;                   /* Power on */
 
     //for (Timer[0] = 10; Timer[0]; ) ; /* 10ms */
-    xtimer_usleep(1000);
+    ztimer_sleep(ZTIMER_USEC, 1 * US_PER_MS);
 
     MCI_POWER = 0x03;                   /* Enable signals */
 }
-
 
 static void power_off(void)
 {
@@ -363,7 +350,6 @@ static void power_off(void)
 
     Stat |= DISKIO_STA_NOINIT;
 }
-
 
 /*-----------------------------------------------------------------------*/
 /* Send a command packet to the card and receive a response              */
@@ -415,12 +401,12 @@ static int send_cmd(unsigned int idx, unsigned long arg, unsigned int rt, unsign
     MCI_COMMAND = mc;               /* Initiate command transaction */
 
     //Timer[1] = 100;
-    uint32_t timerstart = xtimer_now_usec();
+    uint32_t timerstart = ztimer_now(ZTIMER_USEC);
 
     while (1) {                     /* Wait for end of the cmd/resp transaction */
 
         //if (!Timer[1]) return 0;
-        if ((xtimer_now_usec() - timerstart) > 10000) {
+        if ((ztimer_now(ZTIMER_USEC) - timerstart) > 10 * US_PER_MS) {
             return 0;
         }
 
@@ -462,9 +448,6 @@ static int send_cmd(unsigned int idx, unsigned long arg, unsigned int rt, unsign
     return 1;       /* Return with success */
 }
 
-
-
-
 /*-----------------------------------------------------------------------*/
 /* Wait card ready                                                       */
 /*-----------------------------------------------------------------------*/
@@ -477,10 +460,10 @@ static int wait_ready(unsigned short tmr)
 {
     unsigned long rc;
 
-    uint32_t stoppoll = xtimer_now_usec() + tmr * US_PER_MS;
+    uint32_t stoppoll = ztimer_now(ZTIMER_USEC) + tmr * US_PER_MS;
     bool bBreak = false;
 
-    while (xtimer_now_usec() < stoppoll/*Timer[0]*/) {
+    while (ztimer_now(ZTIMER_USEC) < stoppoll/*Timer[0]*/) {
         if (send_cmd(CMD13, (unsigned long) CardRCA << 16, 1, &rc) && ((rc & 0x01E00) == 0x00800)) {
             bBreak = true;
             break;
@@ -498,7 +481,6 @@ static int wait_ready(unsigned short tmr)
 static void bswap_cp(unsigned char *dst, const unsigned long *src)
 {
     unsigned long d;
-
 
     d = *src;
     *dst++ = (unsigned char)(d >> 24);
@@ -528,12 +510,12 @@ diskio_sta_t mci_initialize(void)
 
     power_off();
 
-    xtimer_usleep(1000);
+    ztimer_sleep(ZTIMER_USEC, 1 * US_PER_MS);
 
     power_on();                             /* Force socket power on */
     MCI_CLOCK = 0x100 | (PCLK / MCLK_ID / 2 - 1);   /* Set MCICLK = MCLK_ID */
     //for (Timer[0] = 2; Timer[0]; );
-    xtimer_usleep(250);
+    ztimer_sleep(ZTIMER_USEC, 250);
 
     send_cmd(CMD0, 0, 0, resp);             /* Enter idle state */
     CardRCA = 0;
@@ -541,7 +523,7 @@ diskio_sta_t mci_initialize(void)
     /*---- Card is 'idle' state ----*/
 
     /* Initialization timeout of 1000 msec */
-    uint32_t start = xtimer_now_usec();
+    uint32_t start = ztimer_now(ZTIMER_USEC);
 
     /* SDC Ver2 */
     if (send_cmd(CMD8, 0x1AA, 1, resp) && (resp[0] & 0xFFF) == 0x1AA) {
@@ -551,7 +533,7 @@ diskio_sta_t mci_initialize(void)
         do {
             /* Wait while card is busy state (use ACMD41 with HCS bit) */
             /* This loop will take a time. Insert wai_tsk(1) here for multitask envilonment. */
-            if (xtimer_now_usec() > (start + 1000000/* !Timer[0] */)) {
+            if (ztimer_now(ZTIMER_USEC) > (start + 1 * US_PER_SEC /* !Timer[0] */)) {
                 DEBUG("%s, %d: Timeout #1\n", RIOT_FILE_RELATIVE, __LINE__);
                 goto di_fail;
             }
@@ -577,9 +559,9 @@ diskio_sta_t mci_initialize(void)
             DEBUG("%s, %d: %lX\n", RIOT_FILE_RELATIVE, __LINE__, resp[0]);
 
             /* This loop will take a time. Insert wai_tsk(1) here for multitask envilonment. */
-            if (xtimer_now_usec() > (start + 1000000/* !Timer[0] */)) {
-                DEBUG("now: %" PRIu32 ", started at: %" PRIu32 "\n",
-                      xtimer_now_usec(), start);
+            if (ztimer_now(ZTIMER_USEC) > (start + 1 * US_PER_SEC/* !Timer[0] */)) {
+                DEBUG("now: %" PRIu32 "us, started at: %" PRIu32 "\n",
+                      (uint32_t) ztimer_now(ZTIMER_USEC), start);
                 DEBUG("%s, %d: Timeout #2\n", RIOT_FILE_RELATIVE, __LINE__);
                 goto di_fail;
             }
@@ -669,9 +651,6 @@ di_fail:
     return Stat;
 }
 
-
-
-
 /*-----------------------------------------------------------------------*/
 /* Get Disk Status                                                       */
 /*-----------------------------------------------------------------------*/
@@ -680,9 +659,6 @@ diskio_sta_t mci_status(void)
 {
     return Stat;
 }
-
-
-
 
 /*-----------------------------------------------------------------------*/
 /* Read Sector(s)                                                        */
@@ -752,7 +728,6 @@ diskio_result_t mci_read(unsigned char *buff, unsigned long sector, unsigned cha
 
     return count ? DISKIO_RES_ERROR : DISKIO_RES_OK;
 }
-
 
 /*-----------------------------------------------------------------------*/
 /* Write Sector(s)                                                       */
@@ -860,9 +835,6 @@ diskio_result_t mci_write(const unsigned char *buff, unsigned long sector, unsig
 }
 #endif /* _READONLY */
 
-
-
-
 /*-----------------------------------------------------------------------*/
 /* Miscellaneous Functions                                               */
 /*-----------------------------------------------------------------------*/
@@ -875,7 +847,6 @@ diskio_result_t mci_ioctl(
     diskio_result_t res;
     unsigned char *ptr = (unsigned char *)buff;
     unsigned long resp[4], d, *dp, st, ed;
-
 
     if (Stat & DISKIO_STA_NOINIT) {
         return DISKIO_RES_NOTRDY;

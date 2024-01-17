@@ -20,17 +20,9 @@
 
 #include <string.h>
 
-#include "xtimer.h"
-
 #include "lvgl/lvgl.h"
 #include "lvgl_riot.h"
-
-#include "ili9341.h"
-#include "ili9341_params.h"
 #include "disp_dev.h"
-#include "ili9341_disp_dev.h"
-
-static ili9341_t dev;
 
 #define CPU_LABEL_COLOR     "FF0000"
 #define MEM_LABEL_COLOR     "0000FF"
@@ -87,8 +79,6 @@ static void sysmon_task(lv_task_t *param)
 
 void sysmon_create(void)
 {
-    refr_task = lv_task_create(sysmon_task, REFR_TIME, LV_TASK_PRIO_LOW, NULL);
-
     lv_coord_t hres = lv_disp_get_hor_res(NULL);
     lv_coord_t vres = lv_disp_get_ver_res(NULL);
 
@@ -96,16 +86,15 @@ void sysmon_create(void)
     lv_win_set_title(win, "System monitor");
 
     /* Make the window content responsive */
-    lv_win_set_layout(win, LV_LAYOUT_PRETTY);
+    lv_win_set_layout(win, LV_LAYOUT_PRETTY_MID);
 
     /* Create a chart with two data lines */
     chart = lv_chart_create(win, NULL);
-    lv_obj_set_size(chart, hres / 2, vres / 2);
+    lv_obj_set_size(chart, hres / 2.5, vres / 2);
     lv_obj_set_pos(chart, LV_DPI / 10, LV_DPI / 10);
     lv_chart_set_point_count(chart, CHART_POINT_NUM);
     lv_chart_set_range(chart, 0, 100);
     lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
-    lv_chart_set_series_width(chart, 4);
     cpu_ser = lv_chart_add_series(chart, LV_COLOR_RED);
     mem_ser = lv_chart_add_series(chart, LV_COLOR_BLUE);
 
@@ -119,29 +108,20 @@ void sysmon_create(void)
     /* Create a label for the details of Memory and CPU usage */
     info_label = lv_label_create(win, NULL);
     lv_label_set_recolor(info_label, true);
-    lv_obj_align(info_label, chart, LV_ALIGN_OUT_RIGHT_TOP, LV_DPI / 4, 0);
 
-    /* Refresh the chart and label manually at first */
-    sysmon_task(NULL);
+    /* Create the task used to refresh the chart and label */
+    refr_task = lv_task_create(sysmon_task, REFR_TIME, LV_TASK_PRIO_LOW, NULL);
 }
 
 int main(void)
 {
-    /* Configure the generic display driver interface */
-    disp_dev_t *disp_dev = (disp_dev_t *)&dev;
-    disp_dev->driver = &ili9341_disp_dev_driver;
-
     /* Enable backlight */
     disp_dev_backlight_on();
 
-    /* Initialize the concrete display driver */
-    ili9341_init(&dev, &ili9341_params[0]);
-
-    /* Initialize lvgl with the generic display driver interface */
-    lvgl_init(disp_dev);
-
     /* Create the system monitor widget */
     sysmon_create();
+
+    lvgl_run();
 
     return 0;
 }

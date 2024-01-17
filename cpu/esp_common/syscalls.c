@@ -18,6 +18,7 @@
  * @}
  */
 
+#include <assert.h>
 #include <string.h>
 #include <stdio_ext.h>
 #include <sys/unistd.h>
@@ -36,7 +37,7 @@
 #include "malloc.h"
 #endif
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #ifndef MODULE_PTHREAD
@@ -96,6 +97,7 @@ void IRAM_ATTR _lock_init(_lock_t *lock)
         memset(mtx, 0, sizeof(mutex_t));
         *lock = (_lock_t)mtx;
     }
+    /* cppcheck-suppress memleak; mtx is stored in lock */
 }
 
 void IRAM_ATTR _lock_init_recursive(_lock_t *lock)
@@ -127,6 +129,7 @@ void IRAM_ATTR _lock_init_recursive(_lock_t *lock)
         memset(rmtx, 0, sizeof(rmutex_t));
         *lock = (_lock_t)rmtx;
     }
+    /* cppcheck-suppress memleak; rmtx is stored in lock */
 }
 
 void IRAM_ATTR _lock_close(_lock_t *lock)
@@ -157,7 +160,7 @@ void IRAM_ATTR _lock_acquire(_lock_t *lock)
     }
 
     /* if scheduler is not running, we have not to lock the mutex */
-    if (sched_active_thread == NULL) {
+    if (thread_get_active() == NULL) {
         return;
     }
 
@@ -175,7 +178,7 @@ void IRAM_ATTR _lock_acquire_recursive(_lock_t *lock)
     }
 
     /* if scheduler is not running, we have not to lock the rmutex */
-    if (sched_active_thread == NULL) {
+    if (thread_get_active() == NULL) {
         return;
     }
 
@@ -193,7 +196,7 @@ int IRAM_ATTR _lock_try_acquire(_lock_t *lock)
     }
 
     /* if scheduler is not running, we have not to lock the mutex */
-    if (sched_active_thread == NULL) {
+    if (thread_get_active() == NULL) {
         return 0;
     }
 
@@ -214,7 +217,7 @@ int IRAM_ATTR _lock_try_acquire_recursive(_lock_t *lock)
     }
 
     /* if scheduler is not running, we have not to lock the rmutex */
-    if (sched_active_thread == NULL) {
+    if (thread_get_active() == NULL) {
         return 0;
     }
 
@@ -230,7 +233,7 @@ void IRAM_ATTR _lock_release(_lock_t *lock)
     assert(lock != NULL && *lock != 0);
 
     /* if scheduler is not running, we have not to unlock the mutex */
-    if (sched_active_thread == NULL) {
+    if (thread_get_active() == NULL) {
         return;
     }
 
@@ -242,7 +245,7 @@ void IRAM_ATTR _lock_release_recursive(_lock_t *lock)
     assert(lock != NULL && *lock != 0);
 
     /* if scheduler is not running, we have not to unlock the rmutex */
-    if (sched_active_thread == NULL) {
+    if (thread_get_active() == NULL) {
         return;
     }
 
@@ -256,7 +259,7 @@ void IRAM_ATTR _lock_release_recursive(_lock_t *lock)
 #ifdef MODULE_ESP_IDF_HEAP
 
 #define heap_caps_malloc_default(s)         heap_caps_malloc(s, MALLOC_CAP_DEFAULT)
-#define heap_caps_realloc_default(p,s)      heap_caps_realloc(p, s, MALLOC_CAP_DEFAULT)
+#define heap_caps_realloc_default(p, s)     heap_caps_realloc(p, s, MALLOC_CAP_DEFAULT)
 
 void* IRAM_ATTR __wrap__malloc_r(struct _reent *r, size_t size)
 {
@@ -275,14 +278,37 @@ void* IRAM_ATTR __wrap__realloc_r(struct _reent *r, void* ptr, size_t size)
 
 void* IRAM_ATTR __wrap__calloc_r(struct _reent *r, size_t count, size_t size)
 {
-    void *result = heap_caps_malloc_default(count * size);
+    size_t size_total;
+    if (__builtin_mul_overflow(count, size, &size_total)) {
+        return NULL;
+    }
+    void *result = heap_caps_malloc_default(size_total);
     if (result) {
-        bzero(result, count * size);
+        bzero(result, size_total);
     }
     return result;
 }
 
 #else /* MODULE_ESP_IDF_HEAP */
+
+void* IRAM_ATTR __wrap__calloc_r(struct _reent *r, size_t nmemb, size_t size)
+{
+    /* The xtensa support has not yet upstreamed to newlib. Hence, the fixed
+     * calloc implementation of newlib >= 4.0.0 is not available to the ESP
+     * platform. We fix this by implementing calloc on top of malloc ourselves */
+    size_t total_size;
+    if (__builtin_mul_overflow(nmemb, size, &total_size)) {
+        return NULL;
+    }
+
+    void *res = _malloc_r(r, total_size);
+
+    if (res) {
+        memset(res, 0, total_size);
+    }
+
+    return res;
+}
 
 /* for compatibility with ESP-IDF heap functions */
 
@@ -338,6 +364,7 @@ extern uint8_t _eheap3;
 unsigned int IRAM_ATTR get_free_heap_size(void)
 {
     struct mallinfo minfo = mallinfo();
+    /* cppcheck-suppress comparePointers */
     unsigned int heap_size = &_eheap - &_sheap;
 #if NUM_HEAPS > 1
     heap_size += &_eheap1 - &_sheap1;

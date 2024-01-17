@@ -39,7 +39,7 @@
 #include "kw2xrf_tm.h"
 #include "kw2xrf_intern.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define _MACACKWAITDURATION         (864 / 16) /* 864us * 62500Hz */
@@ -55,8 +55,9 @@ static void _isr(netdev_t *netdev);
 
 static void _irq_handler(void *arg)
 {
-    netdev_t *netdev = (netdev_t *) arg;
-    kw2xrf_t *dev = (kw2xrf_t *)netdev;
+    netdev_t *netdev = arg;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev, netdev_ieee802154_t, netdev);
+    kw2xrf_t *dev = container_of(netdev_ieee802154, kw2xrf_t, netdev);
 
     thread_flags_set(dev->thread, KW2XRF_THREAD_FLAG_ISR);
 
@@ -69,9 +70,10 @@ static void _irq_handler(void *arg)
 
 static int _init(netdev_t *netdev)
 {
-    kw2xrf_t *dev = (kw2xrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev, netdev_ieee802154_t, netdev);
+    kw2xrf_t *dev = container_of(netdev_ieee802154, kw2xrf_t, netdev);
 
-    dev->thread = (thread_t *)thread_get(thread_getpid());
+    dev->thread = thread_get_active();
 
     /* initialize SPI and GPIOs */
     if (kw2xrf_init(dev, &_irq_handler)) {
@@ -119,7 +121,7 @@ static void kw2xrf_wait_idle(kw2xrf_t *dev)
         while (1) {
             /* TX in progress */
             /* Handle any outstanding IRQ first */
-            _isr((netdev_t *)dev);
+            _isr(&dev->netdev.netdev);
             /* _isr() will switch the transceiver back to idle after
              * handling the TX complete IRQ */
             if (kw2xrf_can_switch_to_idle(dev)) {
@@ -136,7 +138,8 @@ static void kw2xrf_wait_idle(kw2xrf_t *dev)
 
 static int _send(netdev_t *netdev, const iolist_t *iolist)
 {
-    kw2xrf_t *dev = (kw2xrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev, netdev_ieee802154_t, netdev);
+    kw2xrf_t *dev = container_of(netdev_ieee802154, kw2xrf_t, netdev);
     uint8_t *pkt_buf = &(dev->buf[1]);
     size_t len = 0;
 
@@ -178,7 +181,8 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
 
 static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
 {
-    kw2xrf_t *dev = (kw2xrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev, netdev_ieee802154_t, netdev);
+    kw2xrf_t *dev = container_of(netdev_ieee802154, kw2xrf_t, netdev);
     size_t pkt_len = 0;
 
     /* get size of the received packet */
@@ -241,7 +245,8 @@ static netopt_state_t _get_state(kw2xrf_t *dev)
 
 int _get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
 {
-    kw2xrf_t *dev = (kw2xrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev, netdev_ieee802154_t, netdev);
+    kw2xrf_t *dev = container_of(netdev_ieee802154, kw2xrf_t, netdev);
 
     if (dev == NULL) {
         return -ENODEV;
@@ -278,7 +283,6 @@ int _get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
             }
             return sizeof(netopt_enable_t);
 
-
         case NETOPT_PRELOADING:
             if (dev->netdev.flags & KW2XRF_OPT_PRELOADING) {
                 *((netopt_enable_t *)value) = NETOPT_ENABLE;
@@ -298,23 +302,10 @@ int _get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
             return sizeof(netopt_enable_t);
 
         case NETOPT_RX_START_IRQ:
-            *((netopt_enable_t *)value) =
-                !!(dev->netdev.flags & KW2XRF_OPT_TELL_RX_START);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_RX_END_IRQ:
-            *((netopt_enable_t *)value) =
-                !!(dev->netdev.flags & KW2XRF_OPT_TELL_RX_END);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_TX_START_IRQ:
-            *((netopt_enable_t *)value) =
-                !!(dev->netdev.flags & KW2XRF_OPT_TELL_TX_START);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_TX_END_IRQ:
-            *((netopt_enable_t *)value) =
-                !!(dev->netdev.flags & KW2XRF_OPT_TELL_TX_END);
+            *((netopt_enable_t *)value) = NETOPT_ENABLE;
             return sizeof(netopt_enable_t);
 
         case NETOPT_AUTOCCA:
@@ -377,12 +368,14 @@ int _get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
             break;
     }
 
-    return netdev_ieee802154_get((netdev_ieee802154_t *)netdev, opt, value, len);
+    return netdev_ieee802154_get(container_of(netdev, netdev_ieee802154_t, netdev),
+                                 opt, value, len);
 }
 
 static int _set(netdev_t *netdev, netopt_t opt, const void *value, size_t len)
 {
-    kw2xrf_t *dev = (kw2xrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev, netdev_ieee802154_t, netdev);
+    kw2xrf_t *dev = container_of(netdev_ieee802154, kw2xrf_t, netdev);
     int res = -ENOTSUP;
 
     if (dev == NULL) {
@@ -482,30 +475,6 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *value, size_t len)
             res = sizeof(netopt_enable_t);
             break;
 
-        case NETOPT_RX_START_IRQ:
-            kw2xrf_set_option(dev, KW2XRF_OPT_TELL_RX_START,
-                                 ((bool *)value)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_RX_END_IRQ:
-            kw2xrf_set_option(dev, KW2XRF_OPT_TELL_RX_END,
-                                 ((bool *)value)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_TX_START_IRQ:
-            kw2xrf_set_option(dev, KW2XRF_OPT_TELL_TX_START,
-                                 ((bool *)value)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_TX_END_IRQ:
-            kw2xrf_set_option(dev, KW2XRF_OPT_TELL_TX_END,
-                                 ((bool *)value)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
         case NETOPT_AUTOCCA:
             kw2xrf_set_option(dev, KW2XRF_OPT_AUTOCCA,
                                  ((bool *)value)[0]);
@@ -560,8 +529,8 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *value, size_t len)
     }
 
     if (res == -ENOTSUP) {
-        res = netdev_ieee802154_set((netdev_ieee802154_t *)netdev, opt,
-                                     value, len);
+        res = netdev_ieee802154_set(container_of(netdev, netdev_ieee802154_t, netdev),
+                                    opt, value, len);
     }
 
     return res;
@@ -569,7 +538,8 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *value, size_t len)
 
 static void _isr_event_seq_r(netdev_t *netdev, uint8_t *dregs)
 {
-    kw2xrf_t *dev = (kw2xrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev, netdev_ieee802154_t, netdev);
+    kw2xrf_t *dev = container_of(netdev_ieee802154, kw2xrf_t, netdev);
     uint8_t irqsts1 = 0;
 
     if (dregs[MKW2XDM_IRQSTS1] & MKW2XDM_IRQSTS1_RXWTRMRKIRQ) {
@@ -605,7 +575,8 @@ static void _isr_event_seq_r(netdev_t *netdev, uint8_t *dregs)
 
 static void _isr_event_seq_t(netdev_t *netdev, uint8_t *dregs)
 {
-    kw2xrf_t *dev = (kw2xrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev, netdev_ieee802154_t, netdev);
+    kw2xrf_t *dev = container_of(netdev_ieee802154, kw2xrf_t, netdev);
     uint8_t irqsts1 = 0;
 
     if (dregs[MKW2XDM_IRQSTS1] & MKW2XDM_IRQSTS1_TXIRQ) {
@@ -640,7 +611,8 @@ static void _isr_event_seq_t(netdev_t *netdev, uint8_t *dregs)
 /* Standalone CCA */
 static void _isr_event_seq_cca(netdev_t *netdev, uint8_t *dregs)
 {
-    kw2xrf_t *dev = (kw2xrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev, netdev_ieee802154_t, netdev);
+    kw2xrf_t *dev = container_of(netdev_ieee802154, kw2xrf_t, netdev);
     uint8_t irqsts1 = 0;
 
     if ((dregs[MKW2XDM_IRQSTS1] & MKW2XDM_IRQSTS1_CCAIRQ) &&
@@ -660,7 +632,8 @@ static void _isr_event_seq_cca(netdev_t *netdev, uint8_t *dregs)
 
 static void _isr_event_seq_tr(netdev_t *netdev, uint8_t *dregs)
 {
-    kw2xrf_t *dev = (kw2xrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev, netdev_ieee802154_t, netdev);
+    kw2xrf_t *dev = container_of(netdev_ieee802154, kw2xrf_t, netdev);
     uint8_t irqsts1 = 0;
 
     if (dregs[MKW2XDM_IRQSTS1] & MKW2XDM_IRQSTS1_TXIRQ) {
@@ -726,7 +699,8 @@ static void _isr_event_seq_tr(netdev_t *netdev, uint8_t *dregs)
 
 static void _isr_event_seq_ccca(netdev_t *netdev, uint8_t *dregs)
 {
-    kw2xrf_t *dev = (kw2xrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev, netdev_ieee802154_t, netdev);
+    kw2xrf_t *dev = container_of(netdev_ieee802154, kw2xrf_t, netdev);
     uint8_t irqsts1 = 0;
 
     if ((dregs[MKW2XDM_IRQSTS1] & MKW2XDM_IRQSTS1_CCAIRQ) &&
@@ -749,7 +723,8 @@ static void _isr_event_seq_ccca(netdev_t *netdev, uint8_t *dregs)
 static void _isr(netdev_t *netdev)
 {
     uint8_t dregs[MKW2XDM_PHY_CTRL4 + 1];
-    kw2xrf_t *dev = (kw2xrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev, netdev_ieee802154_t, netdev);
+    kw2xrf_t *dev = container_of(netdev_ieee802154, kw2xrf_t, netdev);
     if (!spinning_for_irq) {
         num_irqs_handled = num_irqs_queued;
     }
@@ -798,7 +773,7 @@ static void _isr(netdev_t *netdev)
     }
     kw2xrf_write_dreg(dev, MKW2XDM_IRQSTS2, irqsts2);
 
-    if (ENABLE_DEBUG) {
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
         /* for debugging only */
         kw2xrf_read_dregs(dev, MKW2XDM_IRQSTS1, dregs, MKW2XDM_IRQSTS1 + 3);
         if (dregs[MKW2XDM_IRQSTS1] & 0x7f) {

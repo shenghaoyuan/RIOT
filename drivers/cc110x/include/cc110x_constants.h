@@ -458,7 +458,6 @@ extern "C" {
  */
 #define CC110X_GDO_ON_PLL_IN_LOCK       0x0A
 
-
 /**
  * @brief   GDOx remains constantly LOW
  */
@@ -569,6 +568,11 @@ extern "C" {
  */
 #define CC110X_PKTCTRL1_GET_ADDR_MODE   0x03
 /** @} */
+
+/**
+ * @brief   Time in micro seconds the CC110X takes to wake up from SLEEP state
+ */
+#define CC110X_WAKEUP_TIME_US           150
 
 #ifdef __cplusplus
 }

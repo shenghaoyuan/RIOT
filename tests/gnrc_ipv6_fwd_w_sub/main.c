@@ -22,7 +22,6 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include "kernel_types.h"
 #include "msg.h"
 #include "net/ethernet/hdr.h"
 #include "net/ipv6/addr.h"
@@ -158,7 +157,13 @@ static int _run_test(int argc, char **argv)
         xtimer_usleep(200);
     }
     /* activate dumping of sent ethernet frames */
-    netdev_test_set_send_cb((netdev_test_t *)_mock_netif->dev,
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(_mock_netif->dev,
+                                                          netdev_ieee802154_t,
+                                                          netdev);
+    netdev_test_t *netdev_test = container_of(netdev_ieee802154,
+                                              netdev_test_t,
+                                              netdev);
+    netdev_test_set_send_cb(netdev_test,
                             _dump_etherframe);
     /* first, test forwarding without subscription */
     subscribers = gnrc_netapi_dispatch_receive(GNRC_NETTYPE_IPV6,

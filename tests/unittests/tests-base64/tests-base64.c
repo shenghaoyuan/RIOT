@@ -411,10 +411,14 @@ static void test_base64_10_decode_empty(void)
 static void test_base64_11_urlsafe_encode_int(void)
 {
     uint32_t data_in = 4345;
-    unsigned char expected_encoding[] = "-RAAAA==";
+    unsigned char expected_encoding[] = "-RAAAA";
 
     size_t base64_out_size = 0;
-    char base64_out[sizeof(expected_encoding)];
+
+    /* Up to two = signs are suppressed in urlsafe encoding at the end, but
+     * still written in the implementation. Just allocate 2 bytes more as worst
+     * case */
+    char base64_out[sizeof(expected_encoding) + 2];
 
     /*
     * @Note:
@@ -448,7 +452,7 @@ static void test_base64_11_urlsafe_encode_int(void)
 
 static void test_base64_12_urlsafe_decode_int(void)
 {
-    static const char encoded_base64[]  = "_____wAA==";
+    static const char encoded_base64[]  = "_____wAA";
     static const uint8_t expected[]     = {0xFF, 0xFF, 0xFF, 0xFF, 0x0, 0x0};
 
     size_t base64_size = strlen(encoded_base64);

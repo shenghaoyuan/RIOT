@@ -10,13 +10,26 @@ import contextlib
 class MockSpawn():
     def __init__(self, ctrl, *args, **kwargs):
         self.ctrl = ctrl
-        self.last_command = None
+        self.commands = []
         # set some expected attributes
         self.before = None
         self.echo = False
+        self.expect_res = 0
+
+    @property
+    def last_command(self):
+        if self.commands:
+            return self.commands[-1]
+        else:
+            return None
+
+    def read_nonblocking(self, size=1, timeout=-1):
+        # do nothing, only used to flush pexpect output
+        pass
 
     def sendline(self, line, *args, **kwargs):
-        self.last_command = line
+        if line:
+            self.commands.append(line)
         if self.ctrl.output is None:
             # just echo last input for before (what replwrap is assembling
             # output from)
@@ -29,6 +42,9 @@ class MockSpawn():
     def expect_exact(self, *args, **kwargs):
         # always match on prompt with replwrap
         return 0
+
+    def expect(self, *args, **kwargs):
+        return self.expect_res
 
 
 class MockRIOTCtrl():

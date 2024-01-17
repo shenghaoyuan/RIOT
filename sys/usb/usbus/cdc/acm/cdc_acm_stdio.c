@@ -22,6 +22,7 @@
 #define USB_H_USER_IS_RIOT_INTERNAL
 
 #include <stdio.h>
+#include <sys/types.h>
 
 #include "log.h"
 #include "isrpipe.h"
@@ -49,6 +50,13 @@ void stdio_init(void)
     vfs_bind_stdio();
 #endif
 }
+
+#if IS_USED(MODULE_STDIO_AVAILABLE)
+int stdio_available(void)
+{
+    return tsrb_avail(&_cdc_stdio_isrpipe.tsrb);
+}
+#endif
 
 ssize_t stdio_read(void* buffer, size_t len)
 {

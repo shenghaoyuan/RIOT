@@ -10,9 +10,10 @@
 
 #ifndef DOXYGEN
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
+#include <assert.h>
 #include <string.h>
 
 #include "esp_common.h"
@@ -20,7 +21,10 @@
 #include "log.h"
 #include "syscalls.h"
 #include "thread.h"
-#include "xtimer.h"
+#if defined(MODULE_ESP_WIFI_ANY) || defined(MODULE_ESP_ETH)
+#include "ztimer.h"
+#endif
+#include "timex.h"
 
 #ifdef MCU_ESP32
 #include "soc/soc.h"
@@ -103,6 +107,7 @@ BaseType_t xTaskCreate (TaskFunction_t pvTaskCode,
 
 void vTaskDelete (TaskHandle_t xTaskToDelete)
 {
+    extern volatile thread_t *sched_active_thread;
     DEBUG("%s pid=%d task=%p\n", __func__, thread_getpid(), xTaskToDelete);
 
     assert(xTaskToDelete != NULL);
@@ -132,14 +137,14 @@ void vTaskDelay( const TickType_t xTicksToDelay )
 {
     DEBUG("%s xTicksToDelay=%d\n", __func__, xTicksToDelay);
 #if defined(MODULE_ESP_WIFI_ANY)
-    uint64_t us = xTicksToDelay * MHZ / xPortGetTickRateHz();
-    xtimer_usleep(us);
+     uint64_t ms = xTicksToDelay * MS_PER_SEC / xPortGetTickRateHz();
+     ztimer_sleep(ZTIMER_MSEC, ms);
 #endif
 }
 
 TickType_t xTaskGetTickCount (void)
 {
-    return system_get_time() / USEC_PER_MSEC / portTICK_PERIOD_MS;
+    return system_get_time() / US_PER_MS / portTICK_PERIOD_MS;
 }
 
 void vTaskEnterCritical( portMUX_TYPE *mux )

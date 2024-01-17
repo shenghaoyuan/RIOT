@@ -22,11 +22,13 @@
 #include <string.h>
 #include "byteorder.h"
 #include "periph/spi.h"
-#include "xtimer.h"
+#include "ztimer.h"
+#include "kernel_defines.h"
+
 #include "ili9341.h"
 #include "ili9341_internal.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 static void _ili9341_spi_acquire(const ili9341_t *dev)
@@ -96,40 +98,40 @@ int ili9341_init(ili9341_t *dev, const ili9341_params_t *params)
         return -1;
     }
 
-    if (dev->params->rst_pin != GPIO_UNDEF) {
+    if (gpio_is_valid(dev->params->rst_pin)) {
         gpio_init(dev->params->rst_pin, GPIO_OUT);
         gpio_clear(dev->params->rst_pin);
-        xtimer_usleep(120 * US_PER_MS);
+        ztimer_sleep(ZTIMER_MSEC, 120);
         gpio_set(dev->params->rst_pin);
     }
-    xtimer_usleep(120 * US_PER_MS);
+    ztimer_sleep(ZTIMER_MSEC, 120);
 
     /* Acquire once at release at the end */
     _ili9341_spi_acquire(dev);
     /* Soft Reset */
     _write_cmd(dev, ILI9341_CMD_SWRESET, NULL, 0);
-    xtimer_usleep(120 * US_PER_MS);
+    ztimer_sleep(ZTIMER_MSEC, 120);
 
     /* Display off */
     _write_cmd(dev, ILI9341_CMD_DISPOFF, NULL, 0);
 
     /* PWRCTL1/2 */
-    command_params[0] = _ili9341_calc_pwrctl1(ILI9341_GVDD);
+    command_params[0] = _ili9341_calc_pwrctl1(CONFIG_ILI9341_GVDD);
     _write_cmd(dev, ILI9341_CMD_PWCTRL1, command_params, 1);
 
     command_params[0] = 0x10; /* PWRCTL 0 0 0 */
     _write_cmd(dev, ILI9341_CMD_PWCTRL2, command_params, 1);
 
     /* VCOMCTL */
-    command_params[0] = _ili9341_calc_vmh(ILI9341_VCOMH);
-    command_params[1] = _ili9341_calc_vml(ILI9341_VCOML);
+    command_params[0] = _ili9341_calc_vmh(CONFIG_ILI9341_VCOMH);
+    command_params[1] = _ili9341_calc_vml(CONFIG_ILI9341_VCOML);
     _write_cmd(dev, ILI9341_CMD_VMCTRL1, command_params, 2);
 
     command_params[0] = 0x86;
     _write_cmd(dev, ILI9341_CMD_VMCTRL2, command_params, 1);
 
     /* Memory access CTL */
-    command_params[0] = ILI9341_MADCTL_HORZ_FLIP;
+    command_params[0] = dev->params->rotation;
     command_params[0] |= dev->params->rgb ? 0 : ILI9341_MADCTL_BGR;
     _write_cmd(dev, ILI9341_CMD_MADCTL, command_params, 1);
 
@@ -148,7 +150,6 @@ int ili9341_init(ili9341_t *dev, const ili9341_params_t *params)
     /* Pixel format */
     command_params[0] = 0x55; /* 16 bit mode */
     _write_cmd(dev, ILI9341_CMD_PIXSET, command_params, 1);
-
 
     command_params[0] = 0x01;
     _write_cmd(dev, ILI9341_CMD_GAMSET, command_params, 1);
@@ -229,7 +230,6 @@ void ili9341_read_cmd(const ili9341_t *dev, uint8_t cmd, uint8_t *data, size_t l
     spi_release(dev->params->spi);
 }
 
-
 void ili9341_fill(const ili9341_t *dev, uint16_t x1, uint16_t x2, uint16_t y1,
                   uint16_t y2, uint16_t color)
 {
@@ -248,9 +248,11 @@ void ili9341_fill(const ili9341_t *dev, uint16_t x1, uint16_t x2, uint16_t y1,
     _ili9341_set_area(dev, x1, x2, y1, y2);
     /* Memory access command */
     _ili9341_cmd_start(dev, ILI9341_CMD_RAMWR, true);
-#if ILI9341_LE_MODE
-    color = htons(color);
-#endif
+
+    if (IS_ACTIVE(CONFIG_ILI9341_LE_MODE)) {
+        color = htons(color);
+    }
+
     for (int i = 0; i < (num_pix - 1); i++) {
         spi_transfer_bytes(dev->params->spi, dev->params->cs_pin, true,
                            (uint8_t *)&color, NULL, sizeof(color));
@@ -277,20 +279,20 @@ void ili9341_pixmap(const ili9341_t *dev, uint16_t x1, uint16_t x2,
     /* Memory access command */
     _ili9341_cmd_start(dev, ILI9341_CMD_RAMWR, true);
 
-#if ILI9341_LE_MODE
-    for (size_t i = 0; i < num_pix - 1; i++) {
-        uint16_t ncolor = htons(*(color + i));
-        spi_transfer_bytes(dev->params->spi, dev->params->cs_pin, true,
+    if (IS_ACTIVE(CONFIG_ILI9341_LE_MODE)) {
+        for (size_t i = 0; i < num_pix - 1; i++) {
+            uint16_t ncolor = htons(*(color + i));
+            spi_transfer_bytes(dev->params->spi, dev->params->cs_pin, true,
+                               &ncolor, NULL, sizeof(uint16_t));
+        }
+        uint16_t ncolor = htons(*(color + num_pix - 1));
+        spi_transfer_bytes(dev->params->spi, dev->params->cs_pin, false,
                            &ncolor, NULL, sizeof(uint16_t));
     }
-    uint16_t ncolor = htons(*(color + num_pix - 1));
-    spi_transfer_bytes(dev->params->spi, dev->params->cs_pin, false,
-                       &ncolor, NULL, sizeof(uint16_t));
-#else
-    spi_transfer_bytes(dev->params->spi, dev->params->cs_pin, false,
-                       (const uint8_t *)color, NULL, num_pix * 2);
-
-#endif
+    else {
+        spi_transfer_bytes(dev->params->spi, dev->params->cs_pin, false,
+                           (const uint8_t *)color, NULL, num_pix * 2);
+    }
 
     spi_release(dev->params->spi);
 }

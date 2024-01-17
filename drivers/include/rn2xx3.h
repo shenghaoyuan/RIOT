@@ -23,7 +23,7 @@
 
 #include <stdint.h>
 
-#include "xtimer.h"
+#include "ztimer.h"
 #include "periph/uart.h"
 #include "periph/gpio.h"
 #include "net/netdev.h"
@@ -66,6 +66,23 @@ extern "C" {
  */
 #ifndef CONFIG_RN2XX3_DEFAULT_SLEEP
 #define CONFIG_RN2XX3_DEFAULT_SLEEP            (5000U)
+#endif
+
+/**
+ * @brief   Default automatic reply status
+ *
+ * Set to 1 to enable the automatic reply. The module will transmit a packet without a
+ * payload immediately after a confirmed downlink is received, or when the Frame
+ * Pending bit has been set by the server.
+ *
+ * @note If all enabled channels are busy due to duty cycle limitations, the
+ * module will wait for the first channel that will become free to transmit. The
+ * user will not be able to initiate uplink transmissions until the automatic
+ * transmissions are done. Refer RN2483 LoRa™ Technology Module Command
+ * Reference User’s Guide for more information.
+ */
+#ifdef DOXYGEN
+#define CONFIG_RN2XX3_DEFAULT_AR
 #endif
 /** @} */
 
@@ -172,7 +189,7 @@ typedef struct {
     uint16_t rx_size;                  /**< counter for received char in RX */
 
     /* timers */
-    xtimer_t sleep_timer;              /**< Timer used to count module sleep time */
+    ztimer_t sleep_timer;              /**< Timer used to count module sleep time */
     uint32_t sleep;                    /**< module sleep duration */
 } rn2xx3_t;
 

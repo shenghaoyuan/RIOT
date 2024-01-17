@@ -1,6 +1,6 @@
 PKG_NAME=relic
 PKG_URL=https://github.com/relic-toolkit/relic.git
-PKG_VERSION=0b0442a8218df8d309266923f2dd5b9ae3b318ce
+PKG_VERSION=e3f82e36250b228f3b4646781f6e06a8be497d18
 PKG_LICENSE=LGPL-2.1
 
 PKG_CUSTOM_PREPARED = $(BINDIR)/pkg-build/$(PKG_NAME)/include
@@ -11,7 +11,9 @@ include $(RIOTBASE)/pkg/pkg.mk
 
 CMAKE_MINIMAL_VERSION = 3.6.0
 
-CFLAGS += -Wno-gnu-zero-variadic-macro-arguments -Wno-unused-function -Wno-newline-eof
+CFLAGS += -Wno-unused-function -Wno-old-style-definition -Wno-unused-parameter \
+          -Wno-pedantic -Wno-array-parameter -Wno-unused-but-set-variable \
+          -Wno-stringop-overflow
 
 TOOLCHAIN_FILE = $(PKG_SOURCE_DIR)/xcompile-toolchain.cmake
 
@@ -29,7 +31,7 @@ $(PKG_BUILD_DIR)/lib/librelic_s.a: $(PKG_BUILD_DIR)/Makefile
 
 # Pass 'COMP' with a target specific export to not have issues with the shell
 # escaping evaluation.
-COMP = $(filter-out -Werror -Werror=old-style-definition -Werror=strict-prototypes -std=gnu99,$(CFLAGS))
+COMP = $(filter-out -Werror -Werror=old-style-definition -Werror=strict-prototypes -std=gnu11,$(CFLAGS))
 $(PKG_BUILD_DIR)/Makefile: export COMP ?=
 $(PKG_BUILD_DIR)/Makefile: $(PKG_PREPARED) $(TOOLCHAIN_FILE) | ..cmake_version_supported
 	cmake -B$(PKG_BUILD_DIR) -H$(PKG_SOURCE_DIR) \

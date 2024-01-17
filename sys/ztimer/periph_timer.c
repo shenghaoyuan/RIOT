@@ -20,8 +20,20 @@
  * @}
  */
 
+#include "assert.h"
 #include "irq.h"
 #include "ztimer/periph_timer.h"
+
+#ifndef ZTIMER_PERIPH_TIMER_OFFSET
+/* This can be used for testing. E.g.,
+ *
+ *     CFLAGS="-DZTIMER_PERIPH_TIMER_OFFSET=4000000000LU" make ...
+ *
+ * The value will be added to every lower level timer read.
+ * @note this breaks if the low-level timer doesn't have 32bit width!
+ */
+#define ZTIMER_PERIPH_TIMER_OFFSET 0LU
+#endif
 
 static void _ztimer_periph_timer_set(ztimer_clock_t *clock, uint32_t val)
 {
@@ -50,7 +62,7 @@ static uint32_t _ztimer_periph_timer_now(ztimer_clock_t *clock)
 {
     ztimer_periph_timer_t *ztimer_periph = (ztimer_periph_timer_t *)clock;
 
-    return timer_read(ztimer_periph->dev);
+    return timer_read(ztimer_periph->dev) + ZTIMER_PERIPH_TIMER_OFFSET;
 }
 
 static void _ztimer_periph_timer_cancel(ztimer_clock_t *clock)
@@ -73,12 +85,14 @@ static const ztimer_ops_t _ztimer_periph_timer_ops = {
 };
 
 void ztimer_periph_timer_init(ztimer_periph_timer_t *clock, tim_t dev,
-                              unsigned long freq,
-                              uint32_t max_val)
+                              uint32_t freq, uint32_t max_val)
 {
     clock->dev = dev;
     clock->super.ops = &_ztimer_periph_timer_ops;
     clock->super.max_value = max_val;
-    timer_init(dev, freq, _ztimer_periph_timer_callback, clock);
+    int ret = timer_init(dev, freq, _ztimer_periph_timer_callback, clock);
+
+    (void)ret;
+    assert(ret == 0);
     ztimer_init_extend(&clock->super);
 }

@@ -32,6 +32,7 @@
 #include "thread.h"
 #include "thread_flags.h"
 #include "net/bluetil/ad.h"
+#include "xtimer.h"
 
 #include "nimble_l2cap_test_conf.h"
 
@@ -142,7 +143,6 @@ static void _filter_and_connect(struct ble_gap_disc_desc *disc)
 {
     int res;
     bluetil_ad_t ad;
-
 
     /* we use the bluetil module read-only here, so its save to cast the AD
      * buffer to non-const */
@@ -312,7 +312,7 @@ int main(void)
     puts("NimBLE L2CAP test application");
 
     /* save context of the main thread */
-    _main = (thread_t *)thread_get(thread_getpid());
+    _main = thread_get_active();
 
     /* initialize buffers and setup the test environment */
     res = os_mempool_init(&_coc_mempool, MBUFCNT, MBUFSIZE, _coc_mem, "appbuf");

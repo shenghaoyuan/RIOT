@@ -39,8 +39,11 @@
 #include "at86rf2xx_netdev.h"
 #include "at86rf2xx_internal.h"
 #include "at86rf2xx_registers.h"
+#if IS_USED(MODULE_AT86RF2XX_AES_SPI)
+#include "at86rf2xx_aes.h"
+#endif
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 static int _send(netdev_t *netdev, const iolist_t *iolist);
@@ -71,7 +74,9 @@ static void _irq_handler(void *arg)
 
 static int _init(netdev_t *netdev)
 {
-    at86rf2xx_t *dev = (at86rf2xx_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
 
 #if defined(MODULE_AT86RFA1) || defined(MODULE_AT86RFR2)
     at86rfmega_dev = netdev;
@@ -84,14 +89,11 @@ static int _init(netdev_t *netdev)
     gpio_set(dev->params.reset_pin);
     gpio_init_int(dev->params.int_pin, GPIO_IN, GPIO_RISING, _irq_handler, dev);
 
-    /* Intentionally check if bus can be acquired,
-       since getbus() drops the return value */
-    if (spi_acquire(dev->params.spi, dev->params.cs_pin, SPI_MODE_0,
-                                                dev->params.spi_clk) < 0) {
-        DEBUG("[at86rf2xx] error: unable to acquire SPI bus\n");
-        return -EIO;
+    /* Intentionally check if bus can be acquired, if assertions are on */
+    if (!IS_ACTIVE(NDEBUG)) {
+        spi_acquire(dev->params.spi, dev->params.cs_pin, SPI_MODE_0, dev->params.spi_clk);
+        spi_release(dev->params.spi);
     }
-    spi_release(dev->params.spi);
 #endif
 
     /* reset hardware into a defined state */
@@ -111,7 +113,9 @@ static int _init(netdev_t *netdev)
 
 static int _send(netdev_t *netdev, const iolist_t *iolist)
 {
-    at86rf2xx_t *dev = (at86rf2xx_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
     size_t len = 0;
 
     at86rf2xx_tx_prepare(dev);
@@ -140,7 +144,9 @@ static int _send(netdev_t *netdev, const iolist_t *iolist)
 
 static int _recv(netdev_t *netdev, void *buf, size_t len, void *info)
 {
-    at86rf2xx_t *dev = (at86rf2xx_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
     uint8_t phr;
     size_t pkt_len;
 
@@ -302,7 +308,9 @@ netopt_state_t _get_state(at86rf2xx_t *dev)
 
 static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
 {
-    at86rf2xx_t *dev = (at86rf2xx_t *) netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
 
     if (netdev == NULL) {
         return -ENODEV;
@@ -343,23 +351,10 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
             break;
 
         case NETOPT_RX_START_IRQ:
-            *((netopt_enable_t *)val) =
-                !!(dev->flags & AT86RF2XX_OPT_TELL_RX_START);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_RX_END_IRQ:
-            *((netopt_enable_t *)val) =
-                !!(dev->flags & AT86RF2XX_OPT_TELL_RX_END);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_TX_START_IRQ:
-            *((netopt_enable_t *)val) =
-                !!(dev->flags & AT86RF2XX_OPT_TELL_TX_START);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_TX_END_IRQ:
-            *((netopt_enable_t *)val) =
-                !!(dev->flags & AT86RF2XX_OPT_TELL_TX_END);
+            *((netopt_enable_t *)val) = NETOPT_ENABLE;
             return sizeof(netopt_enable_t);
 
         case NETOPT_CSMA:
@@ -388,8 +383,9 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
 
     int res;
 
-    if (((res = netdev_ieee802154_get((netdev_ieee802154_t *)netdev, opt, val,
-                                      max_len)) >= 0) || (res != -ENOTSUP)) {
+    if (((res = netdev_ieee802154_get(container_of(netdev, netdev_ieee802154_t, netdev),
+                                      opt, val, max_len)) >= 0)
+        || (res != -ENOTSUP)) {
         return res;
     }
 
@@ -480,13 +476,14 @@ static int _get(netdev_t *netdev, netopt_t opt, void *val, size_t max_len)
 
 static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
 {
-    at86rf2xx_t *dev = (at86rf2xx_t *) netdev;
-    uint8_t old_state = at86rf2xx_get_status(dev);
-    int res = -ENOTSUP;
-
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
     if (dev == NULL) {
         return -ENODEV;
     }
+    uint8_t old_state = at86rf2xx_get_status(dev);
+    int res = -ENOTSUP;
 
     /* temporarily wake up if sleeping and opt != NETOPT_STATE.
      * opt != NETOPT_STATE check prevents redundant wake-up.
@@ -498,17 +495,17 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
 
     switch (opt) {
         case NETOPT_ADDRESS:
-            assert(len >= sizeof(network_uint16_t));
+            assert(len == sizeof(network_uint16_t));
             at86rf2xx_set_addr_short(dev, val);
             /* don't set res to set netdev_ieee802154_t::short_addr */
             break;
         case NETOPT_ADDRESS_LONG:
-            assert(len >= sizeof(eui64_t));
+            assert(len == sizeof(eui64_t));
             at86rf2xx_set_addr_long(dev, val);
             /* don't set res to set netdev_ieee802154_t::long_addr */
             break;
         case NETOPT_NID:
-            assert(len <= sizeof(uint16_t));
+            assert(len == sizeof(uint16_t));
             at86rf2xx_set_pan(dev, *((const uint16_t *)val));
             /* don't set res to set netdev_ieee802154_t::pan */
             break;
@@ -599,30 +596,6 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
             }
             break;
 
-        case NETOPT_RX_START_IRQ:
-            at86rf2xx_set_option(dev, AT86RF2XX_OPT_TELL_RX_START,
-                                 ((const bool *)val)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_RX_END_IRQ:
-            at86rf2xx_set_option(dev, AT86RF2XX_OPT_TELL_RX_END,
-                                 ((const bool *)val)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_TX_START_IRQ:
-            at86rf2xx_set_option(dev, AT86RF2XX_OPT_TELL_TX_START,
-                                 ((const bool *)val)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
-        case NETOPT_TX_END_IRQ:
-            at86rf2xx_set_option(dev, AT86RF2XX_OPT_TELL_TX_END,
-                                 ((const bool *)val)[0]);
-            res = sizeof(netopt_enable_t);
-            break;
-
         case NETOPT_CSMA:
             if (!IS_ACTIVE(AT86RF2XX_BASIC_MODE)) {
                 at86rf2xx_set_option(dev, AT86RF2XX_OPT_CSMA,
@@ -664,7 +637,6 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
             break;
 
 #endif /* MODULE_NETDEV_IEEE802154_OQPSK */
-
         default:
             break;
     }
@@ -676,7 +648,8 @@ static int _set(netdev_t *netdev, netopt_t opt, const void *val, size_t len)
     }
 
     if (res == -ENOTSUP) {
-        res = netdev_ieee802154_set((netdev_ieee802154_t *)netdev, opt, val, len);
+        res = netdev_ieee802154_set(container_of(netdev, netdev_ieee802154_t, netdev),
+                                    opt, val, len);
     }
 
     return res;
@@ -690,7 +663,7 @@ static void _isr_send_complete(at86rf2xx_t *dev, uint8_t trac_status)
         return;
     }
 /* Only radios with the XAH_CTRL_2 register support frame retry reporting */
-#if AT86RF2XX_HAVE_RETRIES
+#if AT86RF2XX_HAVE_RETRIES && defined(AT86RF2XX_REG__XAH_CTRL_2)
     dev->tx_retries = (at86rf2xx_reg_read(dev, AT86RF2XX_REG__XAH_CTRL_2)
                        & AT86RF2XX_XAH_CTRL_2__ARET_FRAME_RETRIES_MASK) >>
                       AT86RF2XX_XAH_CTRL_2__ARET_FRAME_RETRIES_OFFSET;
@@ -698,7 +671,7 @@ static void _isr_send_complete(at86rf2xx_t *dev, uint8_t trac_status)
 
     DEBUG("[at86rf2xx] EVT - TX_END\n");
 
-    if (netdev->event_callback && (dev->flags & AT86RF2XX_OPT_TELL_TX_END)) {
+    if (netdev->event_callback) {
         switch (trac_status) {
 #ifdef MODULE_OPENTHREAD
             case AT86RF2XX_TRX_STATE__TRAC_SUCCESS:
@@ -733,7 +706,12 @@ static void _isr_send_complete(at86rf2xx_t *dev, uint8_t trac_status)
 
 static inline void _isr_recv_complete(netdev_t *netdev)
 {
-    at86rf2xx_t *dev = (at86rf2xx_t *) netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
+    if (!netdev->event_callback) {
+        return;
+    }
     if (IS_ACTIVE(AT86RF2XX_BASIC_MODE)) {
         uint8_t phy_status = at86rf2xx_reg_read(dev, AT86RF2XX_REG__PHY_RSSI);
         bool crc_ok = phy_status & AT86RF2XX_PHY_RSSI_MASK__RX_CRC_VALID;
@@ -752,7 +730,9 @@ static inline void _isr_recv_complete(netdev_t *netdev)
 
 static void _isr(netdev_t *netdev)
 {
-    at86rf2xx_t *dev = (at86rf2xx_t *) netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
     uint8_t irq_mask;
     uint8_t state;
     uint8_t trac_status;
@@ -785,9 +765,6 @@ static void _isr(netdev_t *netdev)
         if ((state == AT86RF2XX_PHY_STATE_RX)
             || (state == AT86RF2XX_PHY_STATE_RX_BUSY)) {
             DEBUG("[at86rf2xx] EVT - RX_END\n");
-            if (!(dev->flags & AT86RF2XX_OPT_TELL_RX_END)) {
-                return;
-            }
 
             _isr_recv_complete(netdev);
 
@@ -822,6 +799,93 @@ static void _isr(netdev_t *netdev)
 #if defined(MODULE_AT86RFA1) || defined(MODULE_AT86RFR2)
 
 /**
+ * @brief ISR for transceiver's TX_START interrupt
+ *
+ * In procedure TX_ARET the TRX24_TX_START interrupt is issued separately for every
+ * frame transmission and frame retransmission.
+ * Indicates the frame start of a transmitted acknowledge frame in procedure RX_AACK.
+ *
+ * Flow Diagram Manual p. 52 / 63
+ */
+#if AT86RF2XX_HAVE_RETRIES
+ISR(TRX24_TX_START_vect){
+    /* __enter_isr(); is not necessary as there is nothing which causes a
+     * thread_yield and the interrupt can not be interrupted by an other ISR */
+
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(at86rfmega_dev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
+
+    dev->tx_retries++;
+}
+#endif
+
+/**
+ * @brief  Transceiver PLL Lock
+ *
+ *  Is triggered when PLL locked successfully.
+ *
+ * Manual p. 40
+ */
+ISR(TRX24_PLL_LOCK_vect, ISR_BLOCK)
+{
+    avr8_enter_isr();
+
+    DEBUG("TRX24_PLL_LOCK\n");
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(at86rfmega_dev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
+    dev->irq_status |= AT86RF2XX_IRQ_STATUS_MASK__PLL_LOCK;
+
+    avr8_exit_isr();
+}
+
+/**
+ * @brief  Transceiver PLL Unlock
+ *
+ *  Is triggered when PLL unlocked unexpectedly.
+ *
+ * Manual p. 89
+ */
+ISR(TRX24_PLL_UNLOCK_vect, ISR_BLOCK)
+{
+    avr8_enter_isr();
+
+    DEBUG("TRX24_PLL_UNLOCK\n");
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(at86rfmega_dev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
+    dev->irq_status |= AT86RF2XX_IRQ_STATUS_MASK__PLL_UNLOCK;
+
+    avr8_exit_isr();
+}
+
+/**
+ * @brief ISR for transceiver's receive start interrupt
+ *
+ *  Is triggered when valid PHR is detected.
+ *  Save IRQ status and inform upper layer of data reception.
+ *
+ * Flow Diagram Manual p. 52 / 63
+ */
+ISR(TRX24_RX_START_vect, ISR_BLOCK)
+{
+    avr8_enter_isr();
+
+    uint8_t status = *AT86RF2XX_REG__TRX_STATE & AT86RF2XX_TRX_STATUS_MASK__TRX_STATUS;
+    DEBUG("TRX24_RX_START 0x%x\n", status);
+
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(at86rfmega_dev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
+    dev->irq_status |= AT86RF2XX_IRQ_STATUS_MASK__RX_START;
+    /* Call upper layer to process valid PHR */
+    netdev_trigger_event_isr(at86rfmega_dev);
+
+    avr8_exit_isr();
+}
+
+/**
  * @brief ISR for transceiver's receive end interrupt
  *
  *  Is triggered when valid data is received. FCS check passed.
@@ -831,16 +895,39 @@ static void _isr(netdev_t *netdev)
  */
 ISR(TRX24_RX_END_vect, ISR_BLOCK)
 {
-    atmega_enter_isr();
+    avr8_enter_isr();
 
     uint8_t status = *AT86RF2XX_REG__TRX_STATE & AT86RF2XX_TRX_STATUS_MASK__TRX_STATUS;
     DEBUG("TRX24_RX_END 0x%x\n", status);
 
-    ((at86rf2xx_t *)at86rfmega_dev)->irq_status |= AT86RF2XX_IRQ_STATUS_MASK__RX_END;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(at86rfmega_dev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
+    dev->irq_status |= AT86RF2XX_IRQ_STATUS_MASK__RX_END;
     /* Call upper layer to process received data */
     netdev_trigger_event_isr(at86rfmega_dev);
 
-    atmega_exit_isr();
+    avr8_exit_isr();
+}
+
+/**
+ * @brief  Transceiver CCAED Measurement finished
+ *
+ *  Is triggered when CCA or ED measurement completed.
+ *
+ * Manual p. 74 and p. 76
+ */
+ISR(TRX24_CCA_ED_DONE_vect, ISR_BLOCK)
+{
+    avr8_enter_isr();
+
+    DEBUG("TRX24_CCA_ED_DONE\n");
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(at86rfmega_dev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
+    dev->irq_status |= AT86RF2XX_IRQ_STATUS_MASK__CCA_ED_DONE;
+
+    avr8_exit_isr();
 }
 
 /**
@@ -853,12 +940,15 @@ ISR(TRX24_RX_END_vect, ISR_BLOCK)
  */
 ISR(TRX24_XAH_AMI_vect, ISR_BLOCK)
 {
-    atmega_enter_isr();
+    avr8_enter_isr();
 
     DEBUG("TRX24_XAH_AMI\n");
-    ((at86rf2xx_t *)at86rfmega_dev)->irq_status |= AT86RF2XX_IRQ_STATUS_MASK__AMI;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(at86rfmega_dev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
+    dev->irq_status |= AT86RF2XX_IRQ_STATUS_MASK__AMI;
 
-    atmega_exit_isr();
+    avr8_exit_isr();
 }
 
 /**
@@ -870,9 +960,11 @@ ISR(TRX24_XAH_AMI_vect, ISR_BLOCK)
  */
 ISR(TRX24_TX_END_vect, ISR_BLOCK)
 {
-    atmega_enter_isr();
+    avr8_enter_isr();
 
-    at86rf2xx_t *dev = (at86rf2xx_t *) at86rfmega_dev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(at86rfmega_dev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
     uint8_t status = *AT86RF2XX_REG__TRX_STATE & AT86RF2XX_TRX_STATUS_MASK__TRX_STATUS;
     DEBUG("TRX24_TX_END 0x%x\n", status);
 
@@ -885,7 +977,31 @@ ISR(TRX24_TX_END_vect, ISR_BLOCK)
         netdev_trigger_event_isr(at86rfmega_dev);
     }
 
-    atmega_exit_isr();
+    avr8_exit_isr();
+}
+
+/**
+ * @brief ISR for transceiver's wakeup finished interrupt
+ *
+ *  Is triggered when transceiver module reset is finished.
+ *  Save IRQ status and inform upper layer the transceiver is operational.
+ *
+ * Manual p. 40
+ */
+ISR(TRX24_AWAKE_vect, ISR_BLOCK)
+{
+    avr8_enter_isr();
+
+    DEBUG("TRX24_AWAKE\n");
+
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(at86rfmega_dev,
+                          netdev_ieee802154_t, netdev);
+    at86rf2xx_t *dev = container_of(netdev_ieee802154, at86rf2xx_t, netdev);
+    dev->irq_status |= AT86RF2XX_IRQ_STATUS_MASK__AWAKE;
+    /* Call upper layer to process transceiver wakeup finished */
+    netdev_trigger_event_isr(at86rfmega_dev);
+
+    avr8_exit_isr();
 }
 
 #endif /* MODULE_AT86RFA1 || MODULE_AT86RFR2 */

@@ -25,7 +25,7 @@
 #include "mutex.h"
 #include "periph/adc.h"
 #include "periph_conf.h"
-#include "xtimer.h"
+#include "ztimer.h"
 
 /**
  * @brief map CPU specific register/value names
@@ -54,11 +54,6 @@
    This specifies the first channel that goes to SMPR2 instead of SMPR1. */
 #define ADC_SMPR2_FIRST_CHAN (10)
 #endif
-
-/**
- * @brief   Load the ADC configuration
- */
-static const adc_conf_t adc_config[] = ADC_CONFIG;
 
 /**
  * @brief   Allocate locks for all three available ADC devices
@@ -143,7 +138,13 @@ int adc_init(adc_t line)
 
         /* enable ADC internal voltage regulator and wait for startup period */
         dev(line)->ADC_CR_REG |= (ADC_CR_ADVREGEN);
-        xtimer_usleep(ADC_T_ADCVREG_STUP_US);
+#if IS_USED(MODULE_ZTIMER_USEC)
+        ztimer_sleep(ZTIMER_USEC, ADC_T_ADCVREG_STUP_US);
+#else
+        /* to avoid using ZTIMER_USEC unless already included round up the
+           internal voltage regulator start up to 1ms */
+        ztimer_sleep(ZTIMER_MSEC, 1);
+#endif
 
         /* configure calibration for single ended input */
         dev(line)->ADC_CR_REG &= ~(ADC_CR_ADCALDIF);

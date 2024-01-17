@@ -6,8 +6,8 @@ BOARD_INSUFFICIENT_MEMORY := \
     arduino-nano \
     arduino-uno \
     atmega328p \
+    atmega328p-xplained-mini \
     calliope-mini \
-    chronos \
     hifive1 \
     hifive1b \
     i-nucleo-lrwan1 \

@@ -19,10 +19,19 @@
 #ifndef PERIPH_CONF_H
 #define PERIPH_CONF_H
 
+/* This board provides an LSE */
+#ifndef CONFIG_BOARD_HAS_LSE
+#define CONFIG_BOARD_HAS_LSE    1
+#endif
+
+/* This board provides an HSE */
+#ifndef CONFIG_BOARD_HAS_HSE
+#define CONFIG_BOARD_HAS_HSE    1
+#endif
+
 #include "periph_cpu.h"
-#include "f4/cfg_clock_180_8_1.h"
+#include "clk_conf.h"
 #include "cfg_i2c1_pb8_pb9.h"
-#include "cfg_spi_divtable.h"
 #include "cfg_timer_tim5.h"
 #include "cfg_usb_otg_fs.h"
 
@@ -141,7 +150,7 @@ static const spi_conf_t spi_config[] = {
         .mosi_pin = GPIO_PIN(PORT_A, 7),
         .miso_pin = GPIO_PIN(PORT_A, 6),
         .sclk_pin = GPIO_PIN(PORT_A, 5),
-        .cs_pin   = GPIO_UNDEF,
+        .cs_pin   = SPI_CS_UNDEF,
         .mosi_af  = GPIO_AF5,
         .miso_af  = GPIO_AF5,
         .sclk_af  = GPIO_AF5,

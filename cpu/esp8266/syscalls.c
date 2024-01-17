@@ -21,12 +21,13 @@
 #include "esp_attr.h"
 #include "esp_common.h"
 #include "sdk/sdk.h"
+#include "timex.h"
 
 #ifdef MODULE_ESP_IDF_HEAP
 #include "esp_heap_caps.h"
 #endif
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #ifdef MODULE_ESP_IDF_HEAP
@@ -66,7 +67,7 @@ uint32_t system_get_time(void)
 
 uint32_t system_get_time_ms(void)
 {
-    return system_get_time() / USEC_PER_MSEC;
+    return system_get_time() / US_PER_MS;
 }
 
 void IRAM_ATTR syscalls_init_arch(void)

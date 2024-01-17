@@ -18,14 +18,13 @@
  * @}
  */
 
-#define ENABLE_DEBUG  (0)
-#include "debug.h"
 #include "esp_common.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <sys/reent.h>
 
+#include "macros/units.h"
 #include "board.h"
 #include "esp_attr.h"
 #include "exceptions.h"
@@ -68,7 +67,9 @@
 #include "stdio_uart.h"
 #endif
 
-#define MHZ 1000000UL
+#define ENABLE_DEBUG 0
+#include "debug.h"
+
 #define STRINGIFY(s) STRINGIFY2(s)
 #define STRINGIFY2(s) #s
 
@@ -130,15 +131,18 @@ NORETURN void IRAM call_start_cpu0 (void)
 
     /* Clear BSS. Please do not attempt to do any complex stuff */
     /* (like early logging) before this. */
+    /* cppcheck-suppress comparePointers */
     memset(&_bss_start, 0, (&_bss_end - &_bss_start) * sizeof(_bss_start));
 
     /* if we are not waking up from deep sleep, clear RTC bss */
     if (reset_reason != DEEPSLEEP_RESET) {
+        /* cppcheck-suppress comparePointers */
         memset(&_rtc_bss_start, 0, (&_rtc_bss_end - &_rtc_bss_start));
     }
 
     /* initialize RTC data after power on */
     if (reset_reason == POWERON_RESET || reset_reason == RTCWDT_RTC_RESET) {
+        /* cppcheck-suppress comparePointers */
         memset(&_rtc_bss_rtc_start, 0, (&_rtc_bss_rtc_end - &_rtc_bss_rtc_start));
     }
 
@@ -163,33 +167,33 @@ NORETURN void IRAM call_start_cpu0 (void)
 
     LOG_STARTUP("Current clocks in Hz: CPU=%d APB=%d XTAL=%d SLOW=%d\n",
                 rtc_clk_cpu_freq_value(rtc_clk_cpu_freq_get()),
-                rtc_clk_apb_freq_get(), rtc_clk_xtal_freq_get()*MHZ,
+                rtc_clk_apb_freq_get(), MHZ(rtc_clk_xtal_freq_get()),
                 rtc_clk_slow_freq_get_hz());
 
-    #if ENABLE_DEBUG
-    ets_printf("reset reason: %d\n", reset_reason);
-    ets_printf("_stack      %p\n", sp);
-    ets_printf("_bss_start  %p\n", &_bss_start);
-    ets_printf("_bss_end    %p\n", &_bss_end);
-    #ifndef MODULE_ESP_IDF_HEAP
-    ets_printf("_heap_start %p\n", &_sheap);
-    ets_printf("_heap_end   %p\n", &_eheap);
-    ets_printf("_heap_free  %u\n", get_free_heap_size());
-    #endif /* MODULE_ESP_IDF_HEAP */
-    #endif /* ENABLE_DEBUG */
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        ets_printf("reset reason: %d\n", reset_reason);
+        ets_printf("_stack      %p\n", sp);
+        ets_printf("_bss_start  %p\n", &_bss_start);
+        ets_printf("_bss_end    %p\n", &_bss_end);
+        if (!IS_ACTIVE(MODULE_ESP_IDF_HEAP)) {
+            ets_printf("_heap_start %p\n", &_sheap);
+            ets_printf("_heap_end   %p\n", &_eheap);
+            ets_printf("_heap_free  %u\n", get_free_heap_size());
+        }
+    }
 
     LOG_STARTUP("PRO cpu is up (single core mode, only PRO cpu is used)\n");
 
     /* disable APP cpu */
     DPORT_CLEAR_PERI_REG_MASK(DPORT_APPCPU_CTRL_B_REG, DPORT_APPCPU_CLKGATE_EN);
 
-    #ifdef MODULE_ESP_IDF_HEAP
-    /* init heap */
-    heap_caps_init();
-    #if ENABLE_DEBUG
-    ets_printf("Heap free: %u byte\n", get_free_heap_size());
-    #endif /* ENABLE_DEBUG */
-    #endif /* MODULE_ESP_IDF_HEAP */
+    if (IS_ACTIVE(MODULE_ESP_IDF_HEAP)) {
+        /* init heap */
+        heap_caps_init();
+        if (IS_ACTIVE(ENABLE_DEBUG)) {
+            ets_printf("Heap free: %u byte\n", get_free_heap_size());
+        }
+    }
 
     /* init SPI RAM if enabled */
     #if CONFIG_SPIRAM_SUPPORT && CONFIG_SPIRAM_BOOT_INIT
@@ -252,7 +256,7 @@ static void IRAM system_clk_init (void)
                                                set to 2 MHz and handled later */
     }
 
-    uint32_t freq_before = rtc_clk_cpu_freq_value(rtc_clk_cpu_freq_get()) / MHZ ;
+    uint32_t freq_before = rtc_clk_cpu_freq_value(rtc_clk_cpu_freq_get()) / MHZ(1);
 
     if (freq_before != CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ) {
         /* set configured CPU frequency */
@@ -320,7 +324,7 @@ static NORETURN void IRAM system_init (void)
     /* print some infos */
     LOG_STARTUP("Used clocks in Hz: CPU=%d APB=%d XTAL=%d FAST=%d SLOW=%d\n",
                 rtc_clk_cpu_freq_value(rtc_clk_cpu_freq_get()),
-                rtc_clk_apb_freq_get(), rtc_clk_xtal_freq_get()*MHZ,
+                rtc_clk_apb_freq_get(), MHZ(rtc_clk_xtal_freq_get()),
                 RTC_FAST_FREQ_8M_MHZ, rtc_clk_slow_freq_get_hz());
     LOG_STARTUP("XTAL calibration value: %d\n", esp_clk_slowclk_cal_get());
     LOG_STARTUP("Heap free: %u bytes\n", get_free_heap_size());

@@ -26,12 +26,13 @@
 #include "vfs.h"
 #include "mutex.h"
 #include "thread.h"
-#include "kernel_types.h"
+#include "sched.h"
 #include "clist.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
-#if ENABLE_DEBUG
+
+#if IS_ACTIVE(ENABLE_DEBUG)
 /* Since some of these functions are called by printf, we can't really call
  * printf from our functions or we end up in an infinite recursion. */
 #include <unistd.h> /* for STDOUT_FILENO */
@@ -310,7 +311,6 @@ ssize_t vfs_read(int fd, void *dest, size_t count)
     return filp->f_op->read(filp, dest, count);
 }
 
-
 ssize_t vfs_write(int fd, const void *src, size_t count)
 {
     DEBUG_NOT_STDOUT(fd, "vfs_write: %d, %p, %lu\n", fd, src, (unsigned long)count);
@@ -487,7 +487,6 @@ int vfs_mount(vfs_mount_t *mountp)
     DEBUG("vfs_mount: mount done\n");
     return 0;
 }
-
 
 int vfs_umount(vfs_mount_t *mountp)
 {
@@ -998,6 +997,25 @@ static inline int _fd_is_valid(int fd)
         return -EBADF;
     }
     return 0;
+}
+
+int vfs_sysop_stat_from_fstat(vfs_mount_t *mountp, const char *restrict path, struct stat *restrict buf)
+{
+    const vfs_file_ops_t * f_op = mountp->fs->f_op;
+    vfs_file_t opened = {
+        .mp = mountp,
+        /* As per definition of the `vfsfile_ops::open` field */
+        .f_op = f_op,
+        .private_data = { .ptr = NULL },
+        .pos = 0,
+    };
+    int err = f_op->open(&opened, path, 0, 0, NULL);
+    if (err < 0) {
+        return err;
+    }
+    err = f_op->fstat(&opened, buf);
+    f_op->close(&opened);
+    return err;
 }
 
 /** @} */

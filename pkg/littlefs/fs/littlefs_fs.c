@@ -18,7 +18,7 @@
  * @}
  */
 
-
+#include <assert.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -26,9 +26,7 @@
 
 #include "fs/littlefs_fs.h"
 
-#include "kernel_defines.h"
-
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include <debug.h>
 
 static int littlefs_err_to_errno(ssize_t err)
@@ -72,7 +70,8 @@ static int _dev_read(const struct lfs_config *c, lfs_block_t block,
     DEBUG("lfs_read: c=%p, block=%" PRIu32 ", off=%" PRIu32 ", buf=%p, size=%" PRIu32 "\n",
           (void *)c, block, off, buffer, size);
 
-    return mtd_read(mtd, buffer, ((fs->base_addr + block) * c->block_size) + off, size);
+    return mtd_read_page(mtd, buffer, (fs->base_addr + block) * mtd->pages_per_sector,
+                         off, size);
 }
 
 static int _dev_write(const struct lfs_config *c, lfs_block_t block,
@@ -84,17 +83,8 @@ static int _dev_write(const struct lfs_config *c, lfs_block_t block,
     DEBUG("lfs_write: c=%p, block=%" PRIu32 ", off=%" PRIu32 ", buf=%p, size=%" PRIu32 "\n",
           (void *)c, block, off, buffer, size);
 
-    const uint8_t *buf = buffer;
-    uint32_t addr = ((fs->base_addr + block) * c->block_size) + off;
-    for (const uint8_t *part = buf; part < buf + size; part += c->prog_size,
-         addr += c->prog_size) {
-        int ret = mtd_write(mtd, part, addr, c->prog_size);
-        if (ret != 0) {
-            return ret;
-        }
-    }
-
-    return 0;
+    return mtd_write_page_raw(mtd, buffer, (fs->base_addr + block) * mtd->pages_per_sector,
+                              off, size);
 }
 
 static int _dev_erase(const struct lfs_config *c, lfs_block_t block)
@@ -104,12 +94,7 @@ static int _dev_erase(const struct lfs_config *c, lfs_block_t block)
 
     DEBUG("lfs_erase: c=%p, block=%" PRIu32 "\n", (void *)c, block);
 
-    int ret = mtd_erase(mtd, ((fs->base_addr + block) * c->block_size), c->block_size);
-    if (ret >= 0) {
-        return 0;
-    }
-
-    return ret;
+    return mtd_erase_sector(mtd, fs->base_addr + block, 1);
 }
 
 static int _dev_sync(const struct lfs_config *c)
@@ -184,8 +169,10 @@ static int _mount(vfs_mount_t *mountp)
 {
     /* if one of the lines below fail to compile you probably need to adjust
        vfs buffer sizes ;) */
-    BUILD_BUG_ON(VFS_DIR_BUFFER_SIZE < sizeof(lfs_dir_t));
-    BUILD_BUG_ON(VFS_FILE_BUFFER_SIZE < sizeof(lfs_file_t));
+    static_assert(VFS_DIR_BUFFER_SIZE >= sizeof(lfs_dir_t),
+                  "lfs_dir_t must fit in VFS_DIR_BUFFER_SIZE");
+    static_assert(VFS_FILE_BUFFER_SIZE >= sizeof(lfs_file_t),
+                  "lfs_file_t must fit in VFS_FILE_BUFFER_SIZE");
 
     littlefs_desc_t *fs = mountp->private_data;
 
@@ -276,10 +263,19 @@ static int _rmdir(vfs_mount_t *mountp, const char *name)
     return littlefs_err_to_errno(ret);
 }
 
+static inline lfs_file_t * _get_lfs_file(vfs_file_t *f)
+{
+    /* The buffer in `private_data` is part of a union that also contains a
+     * pointer, so the alignment is fine. Adding an intermediate cast to
+     * uintptr_t to silence -Wcast-align
+     */
+    return (lfs_file_t *)(uintptr_t)f->private_data.buffer;
+}
+
 static int _open(vfs_file_t *filp, const char *name, int flags, mode_t mode, const char *abs_path)
 {
     littlefs_desc_t *fs = filp->mp->private_data;
-    lfs_file_t *fp = (lfs_file_t *)&filp->private_data.buffer;
+    lfs_file_t *fp = _get_lfs_file(filp);
     (void) abs_path;
     (void) mode;
 
@@ -321,7 +317,7 @@ static int _open(vfs_file_t *filp, const char *name, int flags, mode_t mode, con
 static int _close(vfs_file_t *filp)
 {
     littlefs_desc_t *fs = filp->mp->private_data;
-    lfs_file_t *fp = (lfs_file_t *)&filp->private_data.buffer;
+    lfs_file_t *fp = _get_lfs_file(filp);
 
     mutex_lock(&fs->lock);
 
@@ -336,7 +332,7 @@ static int _close(vfs_file_t *filp)
 static ssize_t _write(vfs_file_t *filp, const void *src, size_t nbytes)
 {
     littlefs_desc_t *fs = filp->mp->private_data;
-    lfs_file_t *fp = (lfs_file_t *)&filp->private_data.buffer;
+    lfs_file_t *fp = _get_lfs_file(filp);
 
     mutex_lock(&fs->lock);
 
@@ -352,7 +348,7 @@ static ssize_t _write(vfs_file_t *filp, const void *src, size_t nbytes)
 static ssize_t _read(vfs_file_t *filp, void *dest, size_t nbytes)
 {
     littlefs_desc_t *fs = filp->mp->private_data;
-    lfs_file_t *fp = (lfs_file_t *)&filp->private_data.buffer;
+    lfs_file_t *fp = _get_lfs_file(filp);
 
     mutex_lock(&fs->lock);
 
@@ -368,7 +364,7 @@ static ssize_t _read(vfs_file_t *filp, void *dest, size_t nbytes)
 static off_t _lseek(vfs_file_t *filp, off_t off, int whence)
 {
     littlefs_desc_t *fs = filp->mp->private_data;
-    lfs_file_t *fp = (lfs_file_t *)&filp->private_data.buffer;
+    lfs_file_t *fp = _get_lfs_file(filp);
 
     mutex_lock(&fs->lock);
 
@@ -441,11 +437,20 @@ static int _statvfs(vfs_mount_t *mountp, const char *restrict path, struct statv
     return littlefs_err_to_errno(ret);
 }
 
+static inline lfs_dir_t * _get_lfs_dir(vfs_DIR *dirp)
+{
+    /* The buffer in `private_data` is part of a union that also contains a
+     * pointer, so the alignment is fine. Adding an intermediate cast to
+     * uintptr_t to silence -Wcast-align
+     */
+    return (lfs_dir_t *)(uintptr_t)dirp->private_data.buffer;
+}
+
 static int _opendir(vfs_DIR *dirp, const char *dirname, const char *abs_path)
 {
     (void)abs_path;
     littlefs_desc_t *fs = dirp->mp->private_data;
-    lfs_dir_t *dir = (lfs_dir_t *)&dirp->private_data.buffer;
+    lfs_dir_t *dir = _get_lfs_dir(dirp);
 
     mutex_lock(&fs->lock);
 
@@ -461,7 +466,7 @@ static int _opendir(vfs_DIR *dirp, const char *dirname, const char *abs_path)
 static int _readdir(vfs_DIR *dirp, vfs_dirent_t *entry)
 {
     littlefs_desc_t *fs = dirp->mp->private_data;
-    lfs_dir_t *dir = (lfs_dir_t *)&dirp->private_data.buffer;
+    lfs_dir_t *dir = _get_lfs_dir(dirp);
 
     mutex_lock(&fs->lock);
 
@@ -484,7 +489,7 @@ static int _readdir(vfs_DIR *dirp, vfs_dirent_t *entry)
 static int _closedir(vfs_DIR *dirp)
 {
     littlefs_desc_t *fs = dirp->mp->private_data;
-    lfs_dir_t *dir = (lfs_dir_t *)&dirp->private_data.buffer;
+    lfs_dir_t *dir = _get_lfs_dir(dirp);
 
     mutex_lock(&fs->lock);
 

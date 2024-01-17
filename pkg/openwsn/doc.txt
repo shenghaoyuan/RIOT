@@ -12,8 +12,9 @@
  full network stack (UDP, IPv6 (6LoWPAN), RPL, 6TiSCH) into RIOT.
 
  It can be used instead of GNRC on supported 802.15.4 radios, and compared to
- GNRC, provides a full 6TiSCH implementation. It does not yet support RIOT's
- sock API, so applications will have to be written against OpenWSN's API.
+ GNRC, provides a full 6TiSCH implementation. It supports RIOT's
+ @ref net_sock API, so it can be used as a drop-in replacement for application
+ built on top of @ref net_sock.
 
  This port provides a new RIOT "board" to the OpenWSN software. In this way
  RIOT's hardware abstraction connects to OpenWSN's interfaces.
@@ -37,7 +38,8 @@
  [constrained join protocol](https://datatracker.ietf.org/doc/draft-ietf-6tisch-minimal-security/)
  an the stack itself only handles Join Requests. The JRC (join registrar/coordinator,
  a central entity) is not running on the root node, but alongside it, in the
- `OpenVisualizer` external tool.
+ `OpenVisualizer` external tool. This functionality is now optional but can be
+ included through the `openwsn_cjoin` module.
 
  Once joined the device has the required keys to start listening to DIS (DODAG
  Information Solicitation) messages and to send DIO (DODAG Information Object)
@@ -101,29 +103,45 @@
 
  ### radio
 
- The radio adaptation runs in its own thread with the highest priority
- (`THREAD_PRIORITY_MAIN - 4`) and maps to RIOT's @ref netdev API.
+ The radio adaptation maps to RIOT's @ref netdev API or on
+ @ref drivers_ieee802154_hal API. The later is preferred but not yet
+ supported by all boards.
 
  Hardware MAC layer features such as CSMA/CA, ACK handling and retransmissions
  are handled by OpenWSN, so the radio driver must support disabling AUTOACK
  and CSMA handling by the hardware. Frame filtering must as well be disabled.
 
- The radio adaptation preloads the buffer so `NETOPT_PRELOADING` must be
- supported.
-
  OpenWSN needs to be notified when a frame reception/transmission starts and
- when it ends. Therefore radio drivers need to support the following netdev
- events:
-
-     - `NETDEV_EVENT_RX_STARTED`
-     - `NETDEV_EVENT_TX_STARTED`
-     - `NETDEV_EVENT_RX_COMPLETE`
-     - `NETDEV_EVENT_TX_COMPLETE`
+ when it ends. Without these synchronization can still work but in a deteriorated
+ way.
 
  OpenWSN expects to recover crc information on every received frame even if it
  will simply drop frames with invalid crc. The stack can function correctly if
  radio drivers automatically drop frames with an invalid crc (i.e. the stack
  doesn't get notified about these frames).
+
+ #### ieee802154_hal
+
+ The radio drivers should support the following caps:
+
+     - `IEEE802154_CAP_IRQ_RX_START`
+     - `IEEE802154_CAP_IRQ_TX_START`
+
+ For CRC error handling:
+
+     - `IEEE802154_CAP_IRQ_CRC_ERROR`
+
+ #### netdev
+
+ The radio adaptation preloads the buffer so `NETOPT_PRELOADING` must be
+ supported.
+
+ The radio drivers should support the following netdev events:
+
+     - `NETDEV_EVENT_RX_STARTED`
+     - `NETDEV_EVENT_TX_STARTED`
+     - `NETDEV_EVENT_RX_COMPLETE`
+     - `NETDEV_EVENT_TX_COMPLETE`
 
  ### uart
 
@@ -213,7 +231,8 @@
  ## Tested Platforms and Pin configurations
 
  So far, this has been successfully tested on `iotlab-m3`,`nucleo-f103` and
- `samr21-xpro`, all based on at86rf23x radios.
+ `samr21-xpro`, all based on at86rf23x radios. These radios make use of
+ the `radio_netdev` adaptation.
 
  ### Synchronization
 
@@ -246,6 +265,9 @@
  and `SLOTFRAME_LENGTH` are not configurable by default so need to be overridden
  with `CFLAGS`.
 
+ See [Tune parameters in OpenWSN](https://openwsn.atlassian.net/wiki/spaces/OW/pages/132055073/Tune+parameters+in+OpenWSN)
+ for more details.
+
  ### Timing
 
  Timing is essential for OpenWSN to work properly. For optimal results most
@@ -277,6 +299,17 @@
  `OPENWSN_DEBUGPINS_BOARD` in the form of `debugpins_config_t`.
 
  The default configuration maps to OpenWSN reference hardware `openmote-b`.
+
+ ## Optional Modules and Features
+
+ The following modules are optional and can be disabled if not needed, or to
+ lower the stack footprint.
+
+  - `openwsn_cjoin`: this enabled the use of Constrained Join Protocol (CoJP)
+  - `openwsn_6lo_fragmentation`: this enable 6LoWPAN fragmentation
+  - `openwsn_iee802154e_security`: enable link layer security
+  - `openwsn_adaptive_msf`: allow the MSF algorithm to dynamically remove and
+    allocate slots
 
  ## Testing and debugging
 
@@ -397,24 +430,11 @@ critical sections. This can cause bytes sent over stdio to be missed.
  ## Todos
 
  - `sctimer` to trigger an ISR immediately using software interrupts.
- - `RTT_FREQUENCY` is not configurable for most platforms, implementations
-   should be adapted to make this configurable to be able to set `RTT_FREQUENCY`
-   to 32768Hz or the closer possible value.
  - The UART wrapper uses ztimer to fake an interrupt after one byte
    has been sent. This should also be done with software interrupts.
 
  ##  Future Steps
 
- The OpenWSN community is working on refactoring their code base. As
- one of the outputs of this modules like `cjoin`, `udp`, `coap` will become
- optional. Once this is upstream the support for this pkg should be adapted.
-
- With above mentioned re-works the extraction of the MAC layer might be favored.
-
- As more immediate future steps:
-
- - Follow up PR to add OpenWSN sock
- - Complete support of OpenWSN default HW (`openmote-b`)
- - Add support for other 802.15.4 network drivers
+ It would be desirable to achieve an extraction of the MAC layer.
 
  */

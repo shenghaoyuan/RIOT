@@ -10,18 +10,19 @@
 
 #ifndef DOXYGEN
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #include <string.h>
 
 #include "esp_common.h"
 #include "log.h"
+#include "timex.h"
 
 #include "freertos/FreeRTOS.h"
 
 uint32_t xPortGetTickRateHz(void) {
-    return MSEC_PER_SEC / portTICK_PERIOD_MS;
+    return MS_PER_SEC / portTICK_PERIOD_MS;
 }
 
 BaseType_t xPortInIsrContext(void)

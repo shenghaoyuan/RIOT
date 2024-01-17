@@ -22,6 +22,9 @@
 
 #include <stdlib.h>
 #include "shell_commands.h"
+#ifdef MODULE_CONGURE_TEST
+#include "congure/test.h"
+#endif
 
 extern int _reboot_handler(int argc, char **argv);
 extern int _version_handler(int argc, char **argv);
@@ -83,7 +86,7 @@ extern int _gnrc_icmpv6_ping(int argc, char **argv);
 #endif
 #endif
 
-#ifdef MODULE_RANDOM
+#ifdef MODULE_RANDOM_CMD
 extern int _random_init(int argc, char **argv);
 extern int _random_get(int argc, char **argv);
 #endif
@@ -92,11 +95,24 @@ extern int _random_get(int argc, char **argv);
 extern int _gnrc_ipv6_nib(int argc, char **argv);
 #endif
 
+#ifdef MODULE_NETSTATS_NEIGHBOR
+extern int _netstats_nb(int argc, char **argv);
+#endif
+
 #ifdef MODULE_GNRC_NETIF
 extern int _gnrc_netif_config(int argc, char **argv);
 #ifdef MODULE_GNRC_TXTSND
 extern int _gnrc_netif_send(int argc, char **argv);
 #endif
+#endif
+
+#ifdef MODULE_OPENWSN
+extern int _openwsn_ifconfig(int argc, char **argv);
+extern int _openwsn_handler(int argc, char **argv);
+#endif
+
+#ifdef MODULE_LWIP_NETIF
+extern int _lwip_netif_config(int argc, char **argv);
 #endif
 
 #ifdef MODULE_FIB
@@ -147,6 +163,10 @@ extern int _vfs_handler(int argc, char **argv);
 extern int _ls_handler(int argc, char **argv);
 #endif
 
+#ifdef MODULE_BENCHMARK_UDP
+extern int _benchmark_udp_handler(int argc, char **argv);
+#endif
+
 #ifdef MODULE_CONN_CAN
 extern int _can_handler(int argc, char **argv);
 #endif
@@ -175,7 +195,7 @@ extern int _nimble_netif_handler(int argc, char **argv);
 extern int _nimble_statconn_handler(int argc, char **argv);
 #endif
 
-#ifdef MODULE_SUIT_COAP
+#ifdef MODULE_SUIT_TRANSPORT_COAP
 extern int _suit_handler(int argc, char **argv);
 #endif
 
@@ -187,11 +207,21 @@ extern int _cryptoauth(int argc, char **argv);
 extern int _bootloader_handler(int argc, char **argv);
 #endif
 
+#ifdef MODULE_GNRC_UDP_CMD
+extern int _gnrc_udp_cmd(int argc, char **argv);
+#endif
+#ifdef MODULE_BPF
+extern int _sc_bpf(int argc, char **argv);
+#endif
+
 const shell_command_t _shell_command_list[] = {
     {"reboot", "Reboot the node", _reboot_handler},
     {"version", "Prints current RIOT_VERSION", _version_handler},
 #ifdef MODULE_USB_BOARD_RESET
     {"bootloader", "Reboot to bootloader", _bootloader_handler},
+#endif
+#ifdef MODULE_BENCHMARK_UDP
+    {"bench_udp", "UDP benchmark", _benchmark_udp_handler},
 #endif
 #ifdef MODULE_CONFIG
     {"id", "Gets or sets the node's id.", _id_handler},
@@ -224,10 +254,10 @@ const shell_command_t _shell_command_list[] = {
 #ifdef MODULE_GNRC_ICMPV6_ECHO
 #ifdef MODULE_XTIMER
     { "ping6", "Ping via ICMPv6", _gnrc_icmpv6_ping },
-    { "ping", "Ping via ICMPv6", _gnrc_icmpv6_ping },
+    { "ping", "Alias for ping6", _gnrc_icmpv6_ping },
 #endif
 #endif
-#ifdef MODULE_RANDOM
+#ifdef MODULE_RANDOM_CMD
     { "random_init", "initializes the PRNG", _random_init },
     { "random_get", "returns 32 bit of pseudo randomness", _random_get },
 #endif
@@ -240,11 +270,21 @@ const shell_command_t _shell_command_list[] = {
 #ifdef MODULE_GNRC_IPV6_NIB
     {"nib", "Configure neighbor information base", _gnrc_ipv6_nib},
 #endif
+#ifdef MODULE_NETSTATS_NEIGHBOR
+    {"neigh", "Show neighbor statistics", _netstats_nb},
+#endif
 #ifdef MODULE_GNRC_NETIF
     {"ifconfig", "Configure network interfaces", _gnrc_netif_config},
 #ifdef MODULE_GNRC_TXTSND
     {"txtsnd", "Sends a custom string as is over the link layer", _gnrc_netif_send },
 #endif
+#endif
+#ifdef MODULE_OPENWSN
+    {"ifconfig", "Shows assigned IPv6 addresses", _openwsn_ifconfig},
+    {"openwsn", "OpenWSN commands", _openwsn_handler},
+#endif
+#ifdef MODULE_LWIP_NETIF
+    {"ifconfig", "List network interfaces", _lwip_netif_config},
 #endif
 #ifdef MODULE_FIB
     {"fibroute", "Manipulate the FIB (info: 'fibroute [add|del]')", _fib_route_handler},
@@ -269,6 +309,9 @@ const shell_command_t _shell_command_list[] = {
 #endif
 #ifdef MODULE_GNRC_SIXLOWPAN_FRAG_STATS
     {"6lo_frag", "6LoWPAN fragment statistics", _gnrc_6lo_frag_stats },
+#endif
+#ifdef MODULE_GNRC_UDP_CMD
+    { "udp", "send data over UDP and listen on UDP ports", _gnrc_udp_cmd },
 #endif
 #ifdef MODULE_SAUL_REG
     {"saul", "interact with sensors and actuators using SAUL", _saul },
@@ -307,7 +350,7 @@ const shell_command_t _shell_command_list[] = {
 #ifdef MODULE_NIMBLE_STATCONN
     { "statconn", "NimBLE netif statconn", _nimble_statconn_handler},
 #endif
-#ifdef MODULE_SUIT_COAP
+#ifdef MODULE_SUIT_TRANSPORT_COAP
     { "suit", "Trigger a SUIT firmware update", _suit_handler },
 #endif
 #ifdef MODULE_CRYPTOAUTHLIB
@@ -315,6 +358,28 @@ const shell_command_t _shell_command_list[] = {
 #endif
 #ifdef MODULE_DFPLAYER
     {"dfplayer", "Control a DFPlayer Mini MP3 player", _sc_dfplayer},
+#endif
+#ifdef MODULE_CONGURE_TEST
+    { "cong_clear", "Clears CongURE state object", congure_test_clear_state },
+    { "cong_setup", "Calls the setup function for the CongURE state object",
+      congure_test_call_setup },
+    { "cong_init", "Calls init method of the CongURE state object",
+      congure_test_call_init },
+    { "cong_imi", "Calls inter_message_interval method of the CongURE state object",
+      congure_test_call_inter_msg_interval },
+    { "cong_add_msg",
+      "Adds a message to the list of messages to be reported with "
+      "report_msgs_lost or report_msgs_timeout",
+      congure_test_add_msg },
+    { "cong_msgs_reset",
+      "Resets the list of messages to be reported with report_msgs_lost or "
+      "report_msgs_timeout",
+      congure_test_msgs_reset },
+    { "cong_report", "Calls a report_* method of the CongURE state object",
+      congure_test_call_report },
+#endif
+#ifdef MODULE_BPF
+    {"bpf_keyval", "retrieve bpf key value store values", _sc_bpf},
 #endif
     {NULL, NULL, NULL}
 };

@@ -22,15 +22,22 @@
  * @}
  */
 
+#include <assert.h>
+
+#include "clk.h"
 #include "cpu.h"
 #include "mutex.h"
-#include "assert.h"
 #include "periph/spi.h"
 
 #include "vendor/spi.h"
 
-#define ENABLE_DEBUG        (0)
+#define ENABLE_DEBUG        0
 #include "debug.h"
+
+#define SPI_CLK_NUMOF       ARRAY_SIZE(_spi_clks)
+
+/* DIV_UP is division which rounds up instead of down */
+#define SPI_DIV_UP(a, b)    (((a) + ((b) - 1)) / (b))
 
 static const uint32_t _spi_clks[] = {
     100000,
@@ -40,12 +47,7 @@ static const uint32_t _spi_clks[] = {
     10000000,
 };
 
-#define SPI_CLK_NUMOF       ARRAY_SIZE(_spi_clks)
-
 static uint32_t _spi_clks_config[SPI_CLK_NUMOF] = { 0 };
-
-/* DIV_UP is division which rounds up instead of down */
-#define SPI_DIV_UP(a,b) (((a) + ((b) - 1)) / (b))
 
 /**
  * @brief   Allocation device locks
@@ -61,7 +63,7 @@ void spi_init(spi_t dev)
     mutex_init(&lock);
 
     for (uint8_t i = 0; i < SPI_CLK_NUMOF; ++i) {
-        _spi_clks_config[i] = SPI_DIV_UP(cpu_freq(), 2 * _spi_clks[i]) - 1;
+        _spi_clks_config[i] = SPI_DIV_UP(coreclk(), 2 * _spi_clks[i]) - 1;
     }
 
     /* trigger pin initialization */
@@ -82,7 +84,7 @@ void spi_init_pins(spi_t dev)
         (1 << spi_config[dev].sclk);
 
     /* Enable I/O Function 0 */
-    GPIO_REG(GPIO_IOF_EN)  |=  spi1_pins;
+    GPIO_REG(GPIO_IOF_EN) |=  spi1_pins;
     GPIO_REG(GPIO_IOF_SEL) &= ~spi1_pins;
 }
 
@@ -102,17 +104,15 @@ int spi_init_cs(spi_t dev, spi_cs_t cs)
     return SPI_OK;
 }
 
-int spi_acquire(spi_t dev, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk)
+void spi_acquire(spi_t dev, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk)
 {
     (void)cs;
     assert(dev < SPI_NUMOF);
 
     mutex_lock(&lock);
 
-    _REG32(spi_config[dev].addr, SPI_REG_SCKDIV)  = _spi_clks_config[clk];
+    _REG32(spi_config[dev].addr, SPI_REG_SCKDIV) = _spi_clks_config[clk];
     _REG32(spi_config[dev].addr, SPI_REG_SCKMODE) = mode;
-
-    return SPI_OK;
 }
 
 void spi_release(spi_t dev)
@@ -141,7 +141,7 @@ void spi_transfer_bytes(spi_t dev, spi_cs_t cs, bool cont,
         _REG32(spi_config[dev].addr, SPI_REG_TXFIFO) = out ? out[i] : 0;
 
         uint32_t rxdata;
-        do  {
+        do {
             rxdata = _REG32(spi_config[dev].addr, SPI_REG_RXFIFO);
         } while (rxdata & SPI_RXFIFO_EMPTY);
 

@@ -48,7 +48,14 @@
 
 /* GCC documentation refers to the types as I1, I2, I4, I8, I16 */
 typedef uint8_t  I1;
+
+/* the builtins are declared with "unsigned int", but "uint16_t" is typedef'ed
+ * to "short unsigned int" on most platforms where "sizeof(int) == 2." */
+#if __SIZEOF_INT__ == 2
+typedef unsigned int I2;
+#else
 typedef uint16_t I2;
+#endif
 
 /* the builtins are declared with "unsigned int", but "uint32_t" is typedef'ed
  * to "long unsigned int" on most platforms where "sizeof(int) == 4. */
@@ -274,6 +281,7 @@ void __atomic_load_c(size_t size, const void *src, void *dest, int memorder)
 {
     (void)memorder;
     unsigned int mask = irq_disable();
+
     memcpy(dest, src, size);
     irq_restore(mask);
 }
@@ -290,6 +298,7 @@ void __atomic_store_c(size_t size, void *dest, const void *src, int memorder)
 {
     (void)memorder;
     unsigned int mask = irq_disable();
+
     memcpy(dest, src, size);
     irq_restore(mask);
 }
@@ -308,6 +317,7 @@ void __atomic_exchange_c(size_t size, void *ptr, void *val, void *ret,
 {
     (void)memorder;
     unsigned int mask = irq_disable();
+
     memcpy(ret, ptr, size);
     memcpy(ptr, val, size);
     irq_restore(mask);
@@ -354,6 +364,7 @@ bool __atomic_compare_exchange_c(size_t len, void *ptr, void *expected,
     (void)failure_memorder;
     unsigned int mask = irq_disable();
     bool ret;
+
     if (memcmp(ptr, expected, len) == 0) {
         memcpy(ptr, desired, len);
         ret = true;

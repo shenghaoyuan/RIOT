@@ -23,6 +23,11 @@
 
 #include <kernel_defines.h>
 
+/* prevent cascading include error to xtimer if it is not compiled in or not
+ * supported by board */
+#if IS_USED(MODULE_EVTIMER)
+#include "evtimer.h"
+#endif
 #include "net/ipv6/addr.h"
 #include "net/gnrc/ipv6/nib/conf.h"
 
@@ -36,8 +41,8 @@ extern "C" {
 typedef struct {
     ipv6_addr_t addr;       /**< The address of the border router */
     uint32_t version;       /**< last received version */
-    uint32_t valid_until;   /**< timestamp (in minutes) until which the
-                             *   information is valid */
+    uint32_t valid_until_ms;   /**< timestamp (in ms) until which the information is valid
+                                *   (needs resolution in minutes an 16 bits of them)*/
 } gnrc_ipv6_nib_abr_t;
 
 #if IS_ACTIVE(CONFIG_GNRC_IPV6_NIB_MULTIHOP_P6C) || defined(DOXYGEN)
@@ -98,6 +103,22 @@ void gnrc_ipv6_nib_abr_del(const ipv6_addr_t *addr);
  *          the NIB.
  */
 bool gnrc_ipv6_nib_abr_iter(void **state, gnrc_ipv6_nib_abr_t *abr);
+
+#if IS_USED(MODULE_EVTIMER) || defined(DOXYGEN)
+/**
+ * @brief   Provides the time in minutes for which the authoritative border
+ *          router entry is valid
+ *
+ * @param[in] abr   An authoritative border router entry.
+ *
+ * @return  The time in minutes for which the authoritative border router entry
+ *          is valid.
+ */
+static inline uint32_t gnrc_ipv6_nib_abr_valid_offset(const gnrc_ipv6_nib_abr_t *abr)
+{
+    return (abr->valid_until_ms - evtimer_now_msec()) / ( MS_PER_SEC * SEC_PER_MIN);
+}
+#endif
 
 /**
  * @brief   Prints an authoritative border router list entry

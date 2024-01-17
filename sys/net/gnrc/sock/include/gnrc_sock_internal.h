@@ -56,6 +56,36 @@ extern "C" {
 #define GNRC_SOCK_DYN_PORTRANGE_ERR (0)
 
 /**
+ * @brief   Structure to retrieve auxiliary data from @ref gnrc_sock_recv
+ *
+ * @details The members of this function depend on the modules used
+ * @internal
+ */
+typedef struct {
+#if IS_USED(MODULE_SOCK_AUX_LOCAL) || DOXYGEN
+    /**
+     * @brief   local IP address PDU was received on
+     *
+     * This member is only present if module `sock_aux_local` is used.
+     */
+    sock_ip_ep_t *local;
+#endif
+#if IS_USED(MODULE_SOCK_AUX_TIMESTAMP) || DOXYGEN
+    uint64_t *timestamp;    /**< timestamp PDU was received at in nanoseconds */
+#endif
+#if IS_USED(MODULE_SOCK_AUX_RSSI) || DOXYGEN
+    int16_t *rssi;          /**< RSSI value of received PDU */
+#endif
+    /**
+     * @brief   Flags
+     */
+    uint8_t flags;
+} gnrc_sock_recv_aux_t;
+
+#define GNRC_SOCK_RECV_AUX_FLAG_TIMESTAMP   0x01    /**< Timestamp valid */
+#define GNRC_SOCK_RECV_AUX_FLAG_RSSI        0x02    /**< RSSI valid */
+
+/**
  * @brief   Internal helper functions for GNRC
  * @internal
  * @{
@@ -95,7 +125,7 @@ static inline void gnrc_ep_set(sock_ip_ep_t *out, const sock_ip_ep_t *in,
                                size_t in_size)
 {
     memcpy(out, in, in_size);
-    if (gnrc_netif_highlander()) {
+    if (gnrc_netif_highlander() && (out->netif == 0)) {
         /* set interface implicitly */
         gnrc_netif_t *netif = gnrc_netif_iter(NULL);
 
@@ -116,7 +146,7 @@ void gnrc_sock_create(gnrc_sock_reg_t *reg, gnrc_nettype_t type, uint32_t demux_
  * @internal
  */
 ssize_t gnrc_sock_recv(gnrc_sock_reg_t *reg, gnrc_pktsnip_t **pkt, uint32_t timeout,
-                       sock_ip_ep_t *remote);
+                       sock_ip_ep_t *remote, gnrc_sock_recv_aux_t *aux);
 
 /**
  * @brief   Send a packet internally
@@ -127,7 +157,6 @@ ssize_t gnrc_sock_send(gnrc_pktsnip_t *payload, sock_ip_ep_t *local,
 /**
  * @}
  */
-
 
 #ifdef __cplusplus
 }

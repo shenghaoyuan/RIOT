@@ -26,14 +26,33 @@
 #include "net/gnrc/pkt.h"
 #include "net/gnrc/tcp/tcb.h"
 
+#ifdef SOCK_HAS_IPV6
+#include "net/sock.h"
+#else
 #ifdef MODULE_GNRC_IPV6
 #include "net/gnrc/ipv6.h"
+#endif
 #endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/* Note: This value if configurable for test purposes. Do not override it.
+ *       Changing this value may lead to errors that are hard to track down.
+ */
+#ifndef GNRC_TCP_NO_TIMEOUT
+/**
+ * @brief Special timeout value representing no timeout.
+ */
+#define GNRC_TCP_NO_TIMEOUT (UINT32_MAX)
+#endif
+
+#ifdef SOCK_HAS_IPV6
+/* Re-use sock endpoint if sock is available and supporting IPv6. */
+typedef struct _sock_tl_ep gnrc_tcp_ep_t;
+
+#else
 /**
  * @brief Address information for a single TCP connection endpoint.
  * @extends sock_tcp_ep_t
@@ -49,6 +68,7 @@ typedef struct {
     uint16_t netif;                        /**< Network interface ID */
     uint16_t port;                         /**< Port number (in host byte order) */
 } gnrc_tcp_ep_t;
+#endif
 
 /**
  * @brief Initialize TCP connection endpoint.
@@ -58,7 +78,7 @@ typedef struct {
  * @param[in]     addr        Address for endpoint.
  * @param[in]     addr_size   Size of @p addr.
  * @param[in]     port        Port number for endpoint.
- * @param[in]     netif       Network inferface to use.
+ * @param[in]     netif       Network interface to use.
  *
  * @return   0 on success.
  * @return   -EAFNOSUPPORT if @p address_family is not supported.
@@ -102,57 +122,89 @@ int gnrc_tcp_init(void);
 void gnrc_tcp_tcb_init(gnrc_tcp_tcb_t *tcb);
 
 /**
- * @brief Opens a connection actively.
+ * @brief Initialize Transmission Control Block (TCB) queue
+ * @pre @p queue must not be NULL.
+ *
+ * @param[in,out] queue   TCB queue to initialize.
+ */
+void gnrc_tcp_tcb_queue_init(gnrc_tcp_tcb_queue_t *queue);
+
+/**
+ * @brief Opens a connection.
  *
  * @pre gnrc_tcp_tcb_init() must have been successfully called.
  * @pre @p tcb must not be NULL
  * @pre @p remote must not be NULL.
+ * @pre @p remote->port must not be 0.
  *
- * @note Blocks until a connection has been established or an error occurred.
+ * @note Blocks until a connection was established or an error occurred.
  *
- * @param[in,out] tcb          TCB holding the connection information.
- * @param[in]     remote       Remote endpoint of the host to connect to.
+ * @param[in,out] tcb          TCB for this connection.
+ * @param[in]     remote       Remote endpoint to connect to.
  * @param[in]     local_port   If zero or PORT_UNSPEC, the connections source port
- *                             is randomly chosen. If local_port is non-zero
- *                             the local_port is used as source port.
+ *                             is randomly selected. If local_port is non-zero
+ *                             it is used as source port.
  *
  * @return   0 on success.
- * @return   -EAFNOSUPPORT if @p address_family is not supported.
- * @return   -EINVAL if @p address_family is not the same the address_family use by the TCB.
+ * @return   -EAFNOSUPPORT if @p remote address_family is not supported.
+ * @return   -EINVAL if @p remote and @p tcb address_family do not match
  *                    or @p target_addr is invalid.
- * @return   -EISCONN if TCB is already in use.
- * @return   -ENOMEM if the receive buffer for the TCB could not be allocated.
- * @return   -EADDRINUSE if @p local_port is already used by another connection.
- * @return   -ETIMEDOUT if the connection could not be opened.
- * @return   -ECONNREFUSED if the connection was reset by the peer.
+ * @return   -EISCONN if @p tcb is already connected.
+ * @return   -ENOMEM if there are no receive buffer left to use for @p tcb.
+ * @return   -EADDRINUSE if @p local_port is already in use.
+ * @return   -ETIMEDOUT if the connection attempt timed out.
+ * @return   -ECONNREFUSED if the connection attempt was reset by the peer.
  */
-int gnrc_tcp_open_active(gnrc_tcp_tcb_t *tcb, const gnrc_tcp_ep_t *remote,
-                         uint16_t local_port);
+int gnrc_tcp_open(gnrc_tcp_tcb_t *tcb, const gnrc_tcp_ep_t *remote, uint16_t local_port);
 
 /**
- * @brief Opens a connection passively, by waiting for an incoming request.
+ * @brief Configures a sequence of TCBs to wait for incoming connections.
  *
- * @pre gnrc_tcp_tcb_init() must have been successfully called.
- * @pre @p tcb must not be NULL.
- * @pre @p local must not be NULL.
- * @pre port in @p local must not be zero.
+ * @pre All TCBs behind @p tcbs must have been initialized via gnrc_tcp_tcb_init().
+ * @pre @p queue must not be NULL.
+ * @pre @p tcbs must not be NULL.
+ * @pre @p tcbs_len must be greater 0.
+ * @pre @p local len must be NULL.
+ * @pre @p local->port must not be 0.
  *
- * @note Blocks until a connection has been established (incoming connection request
- *       to @p local_port) or an error occurred.
+ * @param[in,out] queue   Listening queue for incoming connections.
+ * @param[in] tcbs        TCBs associated with @p queue.
+ * @param[in] tcbs_len    Number of TCBs behind @p tcbs.
+ * @param[in] local       Endpoint specifying address and port to listen on.
  *
- * @param[in,out] tcb     TCB holding the connection information.
- * @param[in]     local   Endpoint specifying the port and address used to wait for
- *                        incoming connections.
- *
- * @return   0 on success.
- * @return   -EAFNOSUPPORT if local_addr != NULL and @p address_family is not supported.
- * @return   -EINVAL if @p address_family is not the same the address_family used in TCB.
- *                    or the address in @p local is invalid.
- * @return   -EISCONN if TCB is already in use.
- * @return   -ENOMEM if the receive buffer for the TCB could not be allocated.
- *            Hint: Increase "CONFIG_GNRC_TCP_RCV_BUFFERS".
+ * @returns   0 on success.
+ * @return   -EAFNOSUPPORT given address family in @p local is not supported.
+ * @return   -EINVAL address_family in @p tcbs and @p local do not match.
+ * @return   -EISCONN a TCB in @p tcbs is already connected.
+ * @return   -ENOMEM all available receive buffers are in use.
+ *                   Increase GNRC_TCP_RCV_BUFFERS.
  */
-int gnrc_tcp_open_passive(gnrc_tcp_tcb_t *tcb, const gnrc_tcp_ep_t *local);
+int gnrc_tcp_listen(gnrc_tcp_tcb_queue_t *queue, gnrc_tcp_tcb_t *tcbs, size_t tcbs_len,
+                    const gnrc_tcp_ep_t *local);
+
+/**
+ * @brief Accept TCP connection from listening queue.
+ *
+ * @pre @p queue must not be NULL
+ * @pre @p tcb must not be NULL
+ *
+ * @note Function blocks if user_timeout_duration_us is not zero.
+ *
+ * @param[in]  queue                      Listening queue to accept connection from.
+ * @param[out] tcb                        Pointer to TCB associated with a established connection.
+ * @param[in]  user_timeout_duration_ms   User specified timeout in milliseconds. If
+ *                                        GNRC_TCP_NO_TIMEOUT the function blocks until a
+ *                                        connection was established or an error occurred.
+ *
+ * @return 0 on success.
+ * @return -ENOMEM if all connection in @p queue were already accepted.
+ * @return -EINVAL if listen was never called on queue.
+ * @return -EAGAIN if @p user_timeout_duration_ms was 0 and no connection is ready to accept.
+ * @return -ETIMEDOUT if @p user_timeout_duration_ms was not 0 and no connection
+ *                    could be established.
+ */
+int gnrc_tcp_accept(gnrc_tcp_tcb_queue_t *queue, gnrc_tcp_tcb_t **tcb,
+                    const uint32_t user_timeout_duration_ms);
 
 /**
  * @brief Transmit data to connected peer.
@@ -166,18 +218,21 @@ int gnrc_tcp_open_passive(gnrc_tcp_tcb_t *tcb, const gnrc_tcp_ep_t *local);
  * @param[in,out] tcb                        TCB holding the connection information.
  * @param[in]     data                       Pointer to the data that should be transmitted.
  * @param[in]     len                        Number of bytes that should be transmitted.
- * @param[in]     user_timeout_duration_us   If not zero and there was not data transmitted
- *                                           the function returns after user_timeout_duration_us.
+ * @param[in]     user_timeout_duration_ms   If not zero and there was not data transmitted
+ *                                           the function returns after user_timeout_duration_ms.
  *                                           If zero, no timeout will be triggered.
+ *                                           If GNRC_TCP_NO_TIMEOUT the timeout is disabled
+ *                                           causing the function to block until some data was
+ *                                           transmitted or and error occurred.
  *
  * @return   The number of successfully transmitted bytes.
  * @return   -ENOTCONN if connection is not established.
  * @return   -ECONNRESET if connection was reset by the peer.
  * @return   -ECONNABORTED if the connection was aborted.
- * @return   -ETIMEDOUT if @p user_timeout_duration_us expired.
+ * @return   -ETIMEDOUT if @p user_timeout_duration_ms expired.
  */
 ssize_t gnrc_tcp_send(gnrc_tcp_tcb_t *tcb, const void *data, const size_t len,
-                      const uint32_t user_timeout_duration_us);
+                      const uint32_t user_timeout_duration_ms);
 
 /**
  * @brief Receive Data from the peer.
@@ -193,22 +248,25 @@ ssize_t gnrc_tcp_send(gnrc_tcp_tcb_t *tcb, const void *data, const size_t len,
  *                                           should be copied into.
  * @param[in]     max_len                    Maximum amount to bytes that should be read
  *                                           into @p data.
- * @param[in]     user_timeout_duration_us   Timeout for receive in microseconds.
+ * @param[in]     user_timeout_duration_ms   Timeout for receive in milliseconds.
  *                                           If zero and no data is available, the function
  *                                           returns immediately. If not zero the function
  *                                           blocks until data is available or
- *                                           @p user_timeout_duration_us microseconds passed.
+ *                                           @p user_timeout_duration_ms milliseconds passed.
+ *                                           If GNRC_TCP_NO_TIMEOUT, causing the function to
+ *                                           block until some data was available or an error
+ *                                           occurred.
  *
  * @return   The number of bytes read into @p data.
- * @return   0, if the connection is closing and no further data can be read.
+ * @return   0, if the connection is closing and no further data can be read or @p max_len was 0.
  * @return   -ENOTCONN if connection is not established.
  * @return   -EAGAIN if  user_timeout_duration_us is zero and no data is available.
  * @return   -ECONNRESET if connection was reset by the peer.
  * @return   -ECONNABORTED if the connection was aborted.
- * @return   -ETIMEDOUT if @p user_timeout_duration_us expired.
+ * @return   -ETIMEDOUT if @p user_timeout_duration_ms expired.
  */
 ssize_t gnrc_tcp_recv(gnrc_tcp_tcb_t *tcb, void *data, const size_t max_len,
-                      const uint32_t user_timeout_duration_us);
+                      const uint32_t user_timeout_duration_ms);
 
 /**
  * @brief Close a TCP connection.
@@ -229,6 +287,60 @@ void gnrc_tcp_close(gnrc_tcp_tcb_t *tcb);
  * @param[in,out] tcb   TCB holding the connection information.
  */
 void gnrc_tcp_abort(gnrc_tcp_tcb_t *tcb);
+
+/**
+ * @brief Close connections and stop listening on TCB queue
+ *
+ * @pre @p queue must not be NULL
+ *
+ * @note: Blocks until all currently opened connections maintained
+ *        by @p queue were closed.
+ *
+ * @param[in,out] queue   TCB queue to stop listening
+ */
+void gnrc_tcp_stop_listen(gnrc_tcp_tcb_queue_t *queue);
+
+/**
+ * @brief Get the local end point of a connected TCB
+ *
+ * @pre tcb must not be NULL
+ * @pre ep must not be NULL
+ *
+ * @param[in] tcb   TCB holding the connection information.
+ * @param[out] ep   The local end point.
+ *
+ * @return  0 on success.
+ * @return  -EADDRNOTAVAIL, when @p tcb in not in a connected state.
+ */
+int gnrc_tcp_get_local(gnrc_tcp_tcb_t *tcb, gnrc_tcp_ep_t *ep);
+
+/**
+ * @brief Get the remote end point of a connected TCB
+ *
+ * @pre tcb must not be NULL
+ * @pre ep must not be NULL
+ *
+ * @param[in] tcb   TCB holding the connection information.
+ * @param[out] ep   The remote end point.
+ *
+ * @return  0 on success.
+ * @return  -ENOTCONN, when @p tcb in not in a connected state.
+ */
+int gnrc_tcp_get_remote(gnrc_tcp_tcb_t *tcb, gnrc_tcp_ep_t *ep);
+
+/**
+ * @brief Gets the local end point of a TCB queue
+ *
+ * @pre queue must not be NULL
+ * @pre ep must not be NULL
+ *
+ * @param[in] queue   TCB queue to stop listening
+ * @param[out] ep     The local end point.
+ *
+ * @return  0 on success.
+ * @return  -EADDRNOTAVAIL, when @p queue has no local end point.
+ */
+int gnrc_tcp_queue_get_local(gnrc_tcp_tcb_queue_t *queue, gnrc_tcp_ep_t *ep);
 
 /**
  * @brief Calculate and set checksum in TCP header.

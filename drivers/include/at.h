@@ -32,7 +32,7 @@
  * application. This allows to @ref at_add_urc "register" and
  * @ref at_remove_urc "de-register" URC strings to check. Later,
  * @ref at_process_urc can be called to check if any of the registered URCs have
- * been detected. If a registered URC has been detected the correspondant
+ * been detected. If a registered URC has been detected the correspondent
  * @ref at_urc_t::cb "callback function" is called. The mode of operation
  * requires that the user of the module processes periodically the URCs.
  *
@@ -96,20 +96,6 @@ extern "C" {
  */
 #ifdef DOXYGEN
 #define CONFIG_AT_SEND_SKIP_ECHO
-#endif
-
-/**
- * @brief Enable/disable the expected echo after an AT command is sent.
- *
- * @deprecated Use inverse @ref CONFIG_AT_SEND_SKIP_ECHO instead.
- * Will be removed after 2021.01 release.
- */
-#ifndef AT_SEND_ECHO
-#if IS_ACTIVE(CONFIG_AT_SEND_SKIP_ECHO)
-#define AT_SEND_ECHO 0
-#else
-#define AT_SEND_ECHO 1
-#endif
 #endif
 
 /**

@@ -18,6 +18,7 @@
  * @}
  */
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -301,7 +302,6 @@ static void test_ipv6_ext_frag_reass_out_of_order(void)
     gnrc_ipv6_ext_frag_rbuf_t *rbuf;
     gnrc_ipv6_ext_frag_limits_t *ptr;
 
-
     ipv6->nh = PROTNUM_IPV6_EXT_FRAG;
     ipv6->hl = TEST_HL;
     ipv6->len = byteorder_htons(pkt->size);
@@ -410,7 +410,6 @@ static void test_ipv6_ext_frag_reass_out_of_order_rbuf_full(void)
     gnrc_ipv6_ext_frag_rbuf_t *rbuf;
     gnrc_ipv6_ext_frag_limits_t *ptr;
     static const uint32_t foreign_id = TEST_ID + 44U;
-
 
     TEST_ASSERT_EQUAL_INT(1, CONFIG_GNRC_IPV6_EXT_FRAG_RBUF_SIZE);
     /* prepare fragment from a from a foreign datagram */
@@ -553,7 +552,7 @@ static gnrc_pktsnip_t *_build_udp_packet(const ipv6_addr_t *dst,
         return NULL;
     }
     netif_hdr = hdr->data;
-    netif_hdr->if_pid = eth_netif->pid;
+    gnrc_netif_hdr_set_netif(netif_hdr, eth_netif);
     netif_hdr->flags |= GNRC_NETIF_HDR_FLAGS_MULTICAST;
     hdr->next = payload;
     return hdr;
@@ -690,9 +689,9 @@ int main(void)
     int res = gnrc_netif_raw_create(&_netif, mock_netif_stack,
                                     sizeof(mock_netif_stack),
                                     GNRC_NETIF_PRIO, "mock_netif",
-                                    (netdev_t *)&mock_netdev);
+                                    &mock_netdev.netdev.netdev);
     mock_netif = &_netif;
-    assert(res == 0);
+    expect(res == 0);
     shell_run(shell_commands, line_buf, SHELL_DEFAULT_BUFSIZE);
     return 0;
 }

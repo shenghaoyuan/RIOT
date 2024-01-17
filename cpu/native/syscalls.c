@@ -40,13 +40,11 @@
 #include "cpu.h"
 #include "irq.h"
 #include "xtimer.h"
+#include "stdio_base.h"
 
 #include "native_internal.h"
 
-#define ENABLE_DEBUG (0)
-#if ENABLE_DEBUG
-#define LOCAL_DEBUG (1)
-#endif
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 ssize_t (*real_read)(int fd, void *buf, size_t count);
@@ -100,6 +98,7 @@ int (*real_fputc)(int c, FILE *stream);
 int (*real_fgetc)(FILE *stream);
 mode_t (*real_umask)(mode_t cmask);
 ssize_t (*real_writev)(int fildes, const struct iovec *iov, int iovcnt);
+ssize_t (*real_send)(int sockfd, const void *buf, size_t len, int flags);
 
 #ifdef __MACH__
 #else
@@ -109,27 +108,31 @@ int (*real_clock_gettime)(clockid_t clk_id, struct timespec *tp);
 void _native_syscall_enter(void)
 {
     _native_in_syscall++;
-#if LOCAL_DEBUG
-    real_write(STDERR_FILENO, "> _native_in_syscall\n", 21);
-#endif
+
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        real_write(STDERR_FILENO, "> _native_in_syscall\n", 21);
+    }
 }
 
 void _native_syscall_leave(void)
 {
-#if LOCAL_DEBUG
-    real_write(STDERR_FILENO, "< _native_in_syscall\n", 21);
-#endif
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        real_write(STDERR_FILENO, "< _native_in_syscall\n", 21);
+    }
+
     _native_in_syscall--;
     if (
             (_native_sigpend > 0)
             && (_native_in_isr == 0)
             && (_native_in_syscall == 0)
             && (native_interrupts_enabled == 1)
-            && (sched_active_thread != NULL)
+            && (thread_get_active() != NULL)
        )
     {
         _native_in_isr = 1;
-        _native_cur_ctx = (ucontext_t *)sched_active_thread->sp;
+        /* Use intermediate cast to uintptr_t to silence -Wcast-align.
+         * stacks are manually word aligned in thread_static_init() */
+        _native_cur_ctx = (ucontext_t *)(uintptr_t)thread_get_active()->sp;
         native_isr_context.uc_stack.ss_sp = __isr_stack;
         native_isr_context.uc_stack.ss_size = SIGSTKSZ;
         native_isr_context.uc_stack.ss_flags = 0;
@@ -217,6 +220,10 @@ ssize_t _native_read(int fd, void *buf, size_t count)
 {
     ssize_t r;
 
+    if (fd == STDIN_FILENO) {
+        return stdio_read(buf, count);
+    }
+
     _native_syscall_enter();
     r = real_read(fd, buf, count);
     _native_syscall_leave();
@@ -228,6 +235,10 @@ ssize_t _native_write(int fd, const void *buf, size_t count)
 {
     ssize_t r;
 
+    if (fd == STDOUT_FILENO || fd == STDERR_FILENO) {
+        return stdio_write(buf, count);
+    }
+
     _native_syscall_enter();
     r = real_write(fd, buf, count);
     _native_syscall_leave();
@@ -237,7 +248,27 @@ ssize_t _native_write(int fd, const void *buf, size_t count)
 
 ssize_t _native_writev(int fd, const struct iovec *iov, int iovcnt)
 {
-    ssize_t r;
+    ssize_t r = 0;
+
+    if (fd == STDOUT_FILENO || fd == STDERR_FILENO) {
+        while (iovcnt--) {
+            ssize_t res = stdio_write(iov->iov_base, iov->iov_len);
+
+            if (res >= 0) {
+                r += res;
+            } else {
+                return res;
+            }
+
+            if (res < (int)iov->iov_len) {
+                break;
+            }
+
+            iov++;
+        }
+
+        return r;
+    }
 
     _native_syscall_enter();
     r = real_writev(fd, iov, iovcnt);
@@ -251,8 +282,14 @@ ssize_t _native_writev(int fd, const struct iovec *iov, int iovcnt)
 #endif
 int putchar(int c)
 {
-    _native_write(STDOUT_FILENO, &c, 1);
-    return 0;
+    char tmp = c;
+    return _native_write(STDOUT_FILENO, &tmp, sizeof(tmp));
+}
+
+int putc(int c, FILE *fp)
+{
+    char tmp = c;
+    return _native_write(fileno(fp), &tmp, sizeof(tmp));
 }
 
 int puts(const char *s)
@@ -261,6 +298,22 @@ int puts(const char *s)
     r = _native_write(STDOUT_FILENO, (char*)s, strlen(s));
     putchar('\n');
     return r;
+}
+
+int fgetc(FILE *fp)
+{
+    return getc(fp);
+}
+
+int getc(FILE *fp)
+{
+    char c;
+
+    if (_native_read(fileno(fp), &c, sizeof(c)) <= 0) {
+        return EOF;
+    }
+
+    return c;
 }
 
 /* Solve 'format string is not a string literal' as it is validly used in this
@@ -277,8 +330,10 @@ char *make_message(const char *format, va_list argp)
 
     while (1) {
         int n = vsnprintf(message, size, format, argp);
-        if (n < 0)
+        if (n < 0) {
+            free(message);
             return NULL;
+        }
         if (n < size)
             return message;
         size = n + 1;
@@ -303,7 +358,6 @@ int printf(const char *format, ...)
 
     return r;
 }
-
 
 int vprintf(const char *format, va_list argp)
 {
@@ -335,7 +389,6 @@ int vfprintf(FILE *fp, const char *format, va_list argp)
 
     return r;
 }
-
 
 void vwarn(const char *fmt, va_list args)
 {
@@ -483,6 +536,7 @@ void _native_init_syscalls(void)
     *(void **)(&real_clearerr) = dlsym(RTLD_NEXT, "clearerr");
     *(void **)(&real_umask) = dlsym(RTLD_NEXT, "umask");
     *(void **)(&real_writev) = dlsym(RTLD_NEXT, "writev");
+    *(void **)(&real_send) = dlsym(RTLD_NEXT, "send");
     *(void **)(&real_fclose) = dlsym(RTLD_NEXT, "fclose");
     *(void **)(&real_fseek) = dlsym(RTLD_NEXT, "fseek");
     *(void **)(&real_fputc) = dlsym(RTLD_NEXT, "fputc");

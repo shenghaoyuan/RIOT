@@ -69,7 +69,7 @@ int gnrc_ipv6_nib_pl_set(unsigned iface,
         (ipv6_addr_match_prefix(&netif->ipv6.addrs[idx], pfx) >= pfx_len)) {
         dst->flags |= _PFX_ON_LINK;
     }
-    if (netif->ipv6.aac_mode == GNRC_NETIF_AAC_AUTO) {
+    if (netif->ipv6.aac_mode & GNRC_NETIF_AAC_AUTO) {
         dst->flags |= _PFX_SLAAC;
     }
 #if IS_ACTIVE(CONFIG_GNRC_IPV6_NIB_6LBR) && IS_ACTIVE(CONFIG_GNRC_IPV6_NIB_MULTIHOP_P6C)
@@ -104,17 +104,18 @@ void gnrc_ipv6_nib_pl_del(unsigned iface,
         if ((pfx_len == dst->pfx_len) &&
             ((iface == 0) || (iface == _nib_onl_get_if(dst->next_hop))) &&
             (ipv6_addr_match_prefix(pfx, &dst->pfx) >= pfx_len)) {
-            _nib_pl_remove(dst);
-            _nib_release();
+
+            /* notify downstream nodes about the prefix removal */
 #if IS_ACTIVE(CONFIG_GNRC_IPV6_NIB_ROUTER)
             gnrc_netif_t *netif = gnrc_netif_get_by_pid(iface);
 
-            if (netif) {
-                /* update prefixes down-stream */
-                _handle_snd_mc_ra(netif);
+            if (netif && (netif->flags & GNRC_NETIF_FLAGS_IPV6_RTR_ADV)) {
+                _snd_rtr_advs_drop_pfx(netif, &ipv6_addr_all_nodes_link_local, dst);
             }
 #endif
-            return;
+            /* remove the prefix & associated address*/
+            _nib_offl_remove_prefix(dst);
+            break;
         }
     }
     _nib_release();

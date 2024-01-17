@@ -51,7 +51,7 @@ static const tc32_conf_t timer_config[] = {
         .mclk           = &MCLK->APBCMASK.reg,
         .mclk_mask      = MCLK_APBCMASK_TC0 | MCLK_APBCMASK_TC1,
         .gclk_id        = TC0_GCLK_ID,
-        .gclk_src       = SAM0_GCLK_8MHZ,
+        .gclk_src       = SAM0_GCLK_TIMER,
         .flags          = TC_CTRLA_MODE_COUNT32,
     }
 };
@@ -94,12 +94,27 @@ static const uart_conf_t uart_config[] = {
         .tx_pad   = UART_PAD_TX_0,
         .flags    = UART_FLAG_NONE,
         .gclk_src = SAM0_GCLK_MAIN,
+    },
+    {    /* EXT2 header */
+        .dev      = &SERCOM1->USART,
+        .rx_pin   = GPIO_PIN(PA, 19),
+        .tx_pin   = GPIO_PIN(PA, 18),
+#ifdef MODULE_PERIPH_UART_HW_FC
+        .rts_pin  = GPIO_UNDEF,
+        .cts_pin  = GPIO_UNDEF,
+#endif
+        .mux      = GPIO_MUX_C,
+        .rx_pad   = UART_PAD_RX_3,
+        .tx_pad   = UART_PAD_TX_2,
+        .flags    = UART_FLAG_NONE,
+        .gclk_src = SAM0_GCLK_MAIN,
     }
 };
 
 /* interrupt function name mapping */
 #define UART_0_ISR          isr_sercom3
 #define UART_1_ISR          isr_sercom4
+#define UART_2_ISR          isr_sercom1
 
 #define UART_NUMOF          ARRAY_SIZE(uart_config)
 /** @} */
@@ -124,7 +139,7 @@ static const pwm_conf_t pwm_config[] = {
     { .tim  = TCC_CONFIG(TCC0),
       .chan = pwm_chan0_config,
       .chan_numof = ARRAY_SIZE(pwm_chan0_config),
-      .gclk_src = SAM0_GCLK_8MHZ,
+      .gclk_src = SAM0_GCLK_TIMER,
     },
 #endif
 };
@@ -138,7 +153,7 @@ static const pwm_conf_t pwm_config[] = {
  * @{
  */
 static const spi_conf_t spi_config[] = {
-    {
+    {    /* EXT1 header */
         .dev      = &(SERCOM0->SPI),
         .miso_pin = GPIO_PIN(PA, 4),
         .mosi_pin = GPIO_PIN(PA, 6),
@@ -152,6 +167,23 @@ static const spi_conf_t spi_config[] = {
 #ifdef MODULE_PERIPH_DMA
         .tx_trigger = SERCOM0_DMAC_ID_TX,
         .rx_trigger = SERCOM0_DMAC_ID_RX,
+#endif
+    },
+    {    /* EXT2, EXT3 header */
+        .dev      = &(SERCOM5->SPI),
+        .miso_pin = GPIO_PIN(PB, 16),
+        .mosi_pin = GPIO_PIN(PB, 22),
+        .clk_pin  = GPIO_PIN(PB, 23),
+        .miso_mux = GPIO_MUX_C,
+        .mosi_mux = GPIO_MUX_D,
+        .clk_mux  = GPIO_MUX_D,
+        .miso_pad = SPI_PAD_MISO_0,
+        .mosi_pad = SPI_PAD_MOSI_2_SCK_3,
+        .gclk_src = SAM0_GCLK_MAIN,
+#ifdef MODULE_PERIPH_DMA
+        /* no DMA on SERCOM5 */
+        .tx_trigger = DMA_TRIGGER_DISABLED,
+        .rx_trigger = DMA_TRIGGER_DISABLED,
 #endif
     }
 };
@@ -222,7 +254,7 @@ static const adc_conf_chan_t adc_channels[] = {
  * @{
  */
                             /* Must not exceed 12 MHz */
-#define DAC_CLOCK           SAM0_GCLK_8MHZ
+#define DAC_CLOCK           SAM0_GCLK_TIMER
                             /* use Vcc as reference voltage */
 #define DAC_VREF            DAC_CTRLB_REFSEL_VDDANA
 /** @} */

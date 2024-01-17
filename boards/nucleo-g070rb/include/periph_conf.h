@@ -20,7 +20,13 @@
 #define PERIPH_CONF_H
 
 #include "periph_cpu.h"
-#include "g0/cfg_clock_default.h"
+
+/* Add specific clock configuration (HSE, LSE) for this board here */
+#ifndef CONFIG_BOARD_HAS_LSE
+#define CONFIG_BOARD_HAS_LSE            1
+#endif
+
+#include "clk_conf.h"
 #include "cfg_i2c1_pb8_pb9.h"
 #include "cfg_rtt_default.h"
 
@@ -81,29 +87,31 @@ static const uart_conf_t uart_config[] = {
 /** @} */
 
 /**
- * @name   SPI configuration
+ * @name    ADC configuration
  *
- * @note    The spi_divtable is auto-generated from
- *          `cpu/stm32_common/dist/spi_divtable/spi_divtable.c`
+ * Note that we do not configure all ADC channels,
+ * and not in the STM32G070 order.  Instead, we
+ * just define 6 ADC channels, for the Nucleo
+ * Arduino header pins A0-A5
+ *
  * @{
  */
-static const uint8_t spi_divtable[2][5] = {
-    {       /* for 64000000Hz */
-        7,  /* -> 250000Hz */
-        6,  /* -> 500000Hz */
-        5,  /* -> 1000000Hz */
-        3,  /* -> 4000000Hz */
-        2   /* -> 8000000Hz */
-    },
-    {       /* for 64000000Hz */
-        7,  /* -> 250000Hz */
-        6,  /* -> 500000Hz */
-        5,  /* -> 1000000Hz */
-        3,  /* -> 4000000Hz */
-        2   /* -> 8000000Hz */
-    },
+static const adc_conf_t adc_config[] = {
+    { .pin = GPIO_PIN(PORT_A,  0), .dev = 0, .chan =  0 },
+    { .pin = GPIO_PIN(PORT_A,  1), .dev = 0, .chan =  1 },
+    { .pin = GPIO_PIN(PORT_A,  4), .dev = 0, .chan =  4 },
+    { .pin = GPIO_PIN(PORT_B,  1), .dev = 0, .chan =  9 },
+    { .pin = GPIO_PIN(PORT_B, 11), .dev = 0, .chan = 15 },
+    { .pin = GPIO_PIN(PORT_B, 12), .dev = 0, .chan = 16 },
 };
 
+#define ADC_NUMOF           ARRAY_SIZE(adc_config)
+/** @} */
+
+/**
+ * @name   SPI configuration
+ * @{
+ */
 static const spi_conf_t spi_config[] = {
     {
         .dev            = SPI1,

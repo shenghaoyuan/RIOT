@@ -40,7 +40,7 @@
 #include "od.h"
 #endif
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define _MAX_MHR_OVERHEAD           (25)
@@ -66,7 +66,10 @@ static bool blocking_for_irq = false;
 static void kw41zrf_irq_handler(void *arg)
 {
     netdev_t *netdev = arg;
-    kw41zrf_t *dev = (kw41zrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                                                          netdev_ieee802154_t,
+                                                          netdev);
+    kw41zrf_t *dev = container_of(netdev_ieee802154, kw41zrf_t, netdev);
 
     KW41ZRF_LED_IRQ_ON;
     kw41zrf_mask_irqs();
@@ -85,8 +88,11 @@ static void kw41zrf_irq_handler(void *arg)
 
 static int kw41zrf_netdev_init(netdev_t *netdev)
 {
-    kw41zrf_t *dev = (kw41zrf_t *)netdev;
-    dev->thread = (thread_t *)thread_get(thread_getpid());
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                                                          netdev_ieee802154_t,
+                                                          netdev);
+    kw41zrf_t *dev = container_of(netdev_ieee802154, kw41zrf_t, netdev);
+    dev->thread = thread_get_active();
 
     /* initialize hardware */
     if (kw41zrf_init(dev, kw41zrf_irq_handler)) {
@@ -182,7 +188,7 @@ static void kw41zrf_wait_idle(kw41zrf_t *dev)
         /* Block until we get an IRQ */
         thread_flags_wait_any(KW41ZRF_THREAD_FLAG_ISR);
         /* Handle the IRQ */
-        kw41zrf_netdev_isr((netdev_t *)dev);
+        kw41zrf_netdev_isr(&dev->netdev.netdev);
         /* kw41zrf_netdev_isr() will switch the transceiver back to idle
          * after handling the sequence complete IRQ */
         if (kw41zrf_can_switch_to_idle(dev) && dev->backoff_delay == 0) {
@@ -216,7 +222,11 @@ int kw41zrf_cca(kw41zrf_t *dev)
 
 static int kw41zrf_netdev_send(netdev_t *netdev, const iolist_t *iolist)
 {
-    kw41zrf_t *dev = (kw41zrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                                                          netdev_ieee802154_t,
+                                                          netdev);
+    kw41zrf_t *dev = container_of(netdev_ieee802154, kw41zrf_t, netdev);
+
     size_t len = 0;
 
     kw41zrf_wait_idle(dev);
@@ -273,7 +283,10 @@ static inline void kw41zrf_unblock_rx(kw41zrf_t *dev)
 
 static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *info)
 {
-    kw41zrf_t *dev = (kw41zrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                                                          netdev_ieee802154_t,
+                                                          netdev);
+    kw41zrf_t *dev = container_of(netdev_ieee802154, kw41zrf_t, netdev);
     if (kw41zrf_is_dsm()) {
         /* bring the device out of DSM, sleep will be restored before returning */
         kw41zrf_set_power_mode(dev, KW41ZRF_POWER_IDLE);
@@ -431,7 +444,10 @@ static netopt_state_t kw41zrf_netdev_get_state(kw41zrf_t *dev)
 
 int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
 {
-    kw41zrf_t *dev = (kw41zrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                                                          netdev_ieee802154_t,
+                                                          netdev);
+    kw41zrf_t *dev = container_of(netdev_ieee802154, kw41zrf_t, netdev);
 
     if (dev == NULL) {
         return -ENODEV;
@@ -457,27 +473,11 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
             return sizeof(netopt_enable_t);
 
         case NETOPT_RX_START_IRQ:
-            assert(len >= sizeof(netopt_enable_t));
-            *((netopt_enable_t *)value) =
-                !!(dev->flags & KW41ZRF_OPT_TELL_RX_START);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_RX_END_IRQ:
-            assert(len >= sizeof(netopt_enable_t));
-            *((netopt_enable_t *)value) =
-                !!(dev->flags & KW41ZRF_OPT_TELL_RX_END);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_TX_START_IRQ:
-            assert(len >= sizeof(netopt_enable_t));
-            *((netopt_enable_t *)value) =
-                !!(dev->flags & KW41ZRF_OPT_TELL_TX_START);
-            return sizeof(netopt_enable_t);
-
         case NETOPT_TX_END_IRQ:
             assert(len >= sizeof(netopt_enable_t));
-            *((netopt_enable_t *)value) =
-                !!(dev->flags & KW41ZRF_OPT_TELL_TX_END);
+            *((netopt_enable_t *)value) = NETOPT_ENABLE;
             return sizeof(netopt_enable_t);
 
         case NETOPT_CSMA:
@@ -631,14 +631,18 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
     }
 
     if (res == -ENOTSUP) {
-        res = netdev_ieee802154_get((netdev_ieee802154_t *)netdev, opt, value, len);
+        res = netdev_ieee802154_get(container_of(netdev, netdev_ieee802154_t, netdev),
+                                    opt, value, len);
     }
     return res;
 }
 
 static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value, size_t len)
 {
-    kw41zrf_t *dev = (kw41zrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                                                          netdev_ieee802154_t,
+                                                          netdev);
+    kw41zrf_t *dev = container_of(netdev_ieee802154, kw41zrf_t, netdev);
     int res = -ENOTSUP;
 
     if (dev == NULL) {
@@ -657,27 +661,6 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
         case NETOPT_PRELOADING:
             assert(len <= sizeof(const netopt_enable_t));
             kw41zrf_set_option(dev, KW41ZRF_OPT_PRELOADING,
-                               *((const netopt_enable_t *)value));
-            res = sizeof(const netopt_enable_t);
-            break;
-
-        case NETOPT_RX_END_IRQ:
-            assert(len <= sizeof(const netopt_enable_t));
-            kw41zrf_set_option(dev, KW41ZRF_OPT_TELL_RX_END,
-                               *((const netopt_enable_t *)value));
-            res = sizeof(const netopt_enable_t);
-            break;
-
-        case NETOPT_TX_START_IRQ:
-            assert(len <= sizeof(const netopt_enable_t));
-            kw41zrf_set_option(dev, KW41ZRF_OPT_TELL_TX_START,
-                               *((const netopt_enable_t *)value));
-            res = sizeof(const netopt_enable_t);
-            break;
-
-        case NETOPT_TX_END_IRQ:
-            assert(len <= sizeof(const netopt_enable_t));
-            kw41zrf_set_option(dev, KW41ZRF_OPT_TELL_TX_END,
                                *((const netopt_enable_t *)value));
             res = sizeof(const netopt_enable_t);
             break;
@@ -765,13 +748,6 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
             res = sizeof(const netopt_enable_t);
             break;
 
-        case NETOPT_RX_START_IRQ:
-            assert(len <= sizeof(const netopt_enable_t));
-            kw41zrf_set_option(dev, KW41ZRF_OPT_TELL_RX_START,
-                               *((const netopt_enable_t *)value));
-            res = sizeof(const netopt_enable_t);
-            break;
-
         case NETOPT_CSMA:
             assert(len <= sizeof(const netopt_enable_t));
             kw41zrf_set_option(dev, KW41ZRF_OPT_CSMA,
@@ -854,7 +830,8 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
     }
 
     if (res == -ENOTSUP) {
-        res = netdev_ieee802154_set((netdev_ieee802154_t *)netdev, opt, value, len);
+        res = netdev_ieee802154_set(container_of(netdev, netdev_ieee802154_t, netdev),
+                                    opt, value, len);
     }
 
     return res;
@@ -931,7 +908,7 @@ static uint32_t _isr_event_seq_t_ccairq(kw41zrf_t *dev, uint32_t irqsts)
             kw41zrf_abort_sequence(dev);
             kw41zrf_set_sequence(dev, dev->idle_seq);
 
-            if (dev->flags & KW41ZRF_OPT_TELL_TX_END) {
+            if (dev->netdev.netdev.event_callback) {
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_MEDIUM_BUSY);
                 LOG_INFO("[kw41zrf] dropping frame after %u backoffs\n",
                           dev->csma_num_backoffs);
@@ -945,7 +922,7 @@ static uint32_t _isr_event_seq_t_ccairq(kw41zrf_t *dev, uint32_t irqsts)
                   ZLL_LQI_AND_RSSI_CCA1_ED_FNL_SHIFT),
                   dev->csma_num_backoffs
             );
-            if (dev->flags & KW41ZRF_OPT_TELL_TX_START) {
+            if (dev->netdev.netdev.event_callback) {
                 /* TX will start automatically after CCA check succeeded */
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_STARTED);
             }
@@ -962,7 +939,7 @@ static uint32_t _isr_event_seq_r(kw41zrf_t *dev, uint32_t irqsts)
     if (irqsts & ZLL_IRQSTS_RXWTRMRKIRQ_MASK) {
         DEBUG("[kw41zrf] RXWTRMRKIRQ (R)\n");
         handled_irqs |= ZLL_IRQSTS_RXWTRMRKIRQ_MASK;
-        if (dev->flags & KW41ZRF_OPT_TELL_RX_START) {
+        if (dev->netdev.netdev.event_callback) {
             dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_RX_STARTED);
         }
     }
@@ -1017,7 +994,7 @@ static uint32_t _isr_event_seq_r(kw41zrf_t *dev, uint32_t irqsts)
             /* Block XCVSEQ_RECEIVE until netdev->recv has been called */
             dev->recv_blocked = 1;
             kw41zrf_set_sequence(dev, dev->idle_seq);
-            if (dev->flags & KW41ZRF_OPT_TELL_RX_END) {
+            if (dev->netdev.netdev.event_callback) {
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_RX_COMPLETE);
             }
             return handled_irqs;
@@ -1045,7 +1022,7 @@ static uint32_t _isr_event_seq_t(kw41zrf_t *dev, uint32_t irqsts)
 
         DEBUG("[kw41zrf] SEQIRQ (T)\n");
         handled_irqs |= ZLL_IRQSTS_SEQIRQ_MASK;
-        if (dev->flags & KW41ZRF_OPT_TELL_TX_END) {
+        if (dev->netdev.netdev.event_callback) {
             dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_COMPLETE);
         }
         KW41ZRF_LED_TX_OFF;
@@ -1126,7 +1103,7 @@ static uint32_t _isr_event_seq_tr(kw41zrf_t *dev, uint32_t irqsts)
         assert(!kw41zrf_is_dsm());
         kw41zrf_set_sequence(dev, dev->idle_seq);
 
-        if (dev->flags & KW41ZRF_OPT_TELL_TX_END) {
+        if (dev->netdev.netdev.event_callback) {
             if (seq_ctrl_sts & ZLL_SEQ_CTRL_STS_TC3_ABORTED_MASK) {
                 LOG_DEBUG("[kw41zrf] RXACK timeout (TR)\n");
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_NOACK);
@@ -1176,7 +1153,10 @@ static uint32_t _isr_event_seq_ccca(kw41zrf_t *dev, uint32_t irqsts)
 
 static void kw41zrf_netdev_isr(netdev_t *netdev)
 {
-    kw41zrf_t *dev = (kw41zrf_t *)netdev;
+    netdev_ieee802154_t *netdev_ieee802154 = container_of(netdev,
+                                                          netdev_ieee802154_t,
+                                                          netdev);
+    kw41zrf_t *dev = container_of(netdev_ieee802154, kw41zrf_t, netdev);
 
     irq_is_queued = false;
     thread_flags_clear(KW41ZRF_THREAD_FLAG_ISR);

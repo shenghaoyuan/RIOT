@@ -20,39 +20,11 @@
 #define PERIPH_CONF_H
 
 #include "periph_cpu.h"
+#include "clk_conf.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * @name    Clock settings
- *
- * @note    This is auto-generated from
- *          `cpu/stm32_common/dist/clk_conf/clk_conf.c`
- * @{
- */
-/* give the target core clock (HCLK) frequency [in Hz],
- * maximum: 72MHz */
-#define CLOCK_CORECLOCK     (72000000U)
-/* 0: no external high speed crystal available
- * else: actual crystal frequency [in Hz] */
-#define CLOCK_HSE           (8000000U)
-/* 0: no external low speed crystal available,
- * 1: external crystal available (always 32.768kHz) */
-#define CLOCK_LSE           (0U)
-/* peripheral clock setup */
-#define CLOCK_AHB_DIV       RCC_CFGR_HPRE_DIV1
-#define CLOCK_AHB           (CLOCK_CORECLOCK / 1)
-#define CLOCK_APB1_DIV      RCC_CFGR_PPRE1_DIV2     /* max 36MHz */
-#define CLOCK_APB1          (CLOCK_CORECLOCK / 2)
-#define CLOCK_APB2_DIV      RCC_CFGR_PPRE2_DIV1     /* max 72MHz */
-#define CLOCK_APB2          (CLOCK_CORECLOCK / 1)
-
-/* PLL factors */
-#define CLOCK_PLL_PREDIV     (1)
-#define CLOCK_PLL_MUL        (9)
-/** @} */
 
 /**
  * @name   Timer configuration
@@ -153,29 +125,6 @@ static const i2c_conf_t i2c_config[] = {
 /** @} */
 
 /**
- * @brief   Shared SPI clock div table
- *
- * @note    The spi_divtable is auto-generated from
- *          `cpu/stm32_common/dist/spi_divtable/spi_divtable.c`
- */
-static const uint8_t spi_divtable[2][5] = {
-    {       /* for APB1 @ 36000000Hz */
-        7,  /* -> 140625Hz */
-        6,  /* -> 281250Hz */
-        4,  /* -> 1125000Hz */
-        2,  /* -> 4500000Hz */
-        1   /* -> 9000000Hz */
-    },
-    {       /* for APB2 @ 72000000Hz */
-        7,  /* -> 281250Hz */
-        7,  /* -> 281250Hz */
-        5,  /* -> 1125000Hz */
-        3,  /* -> 4500000Hz */
-        2   /* -> 9000000Hz */
-    }
-};
-
-/**
  * @name SPI configuration
  * @{
  */
@@ -185,7 +134,7 @@ static const spi_conf_t spi_config[] = {
         .mosi_pin = GPIO_PIN(PORT_A,  7),
         .miso_pin = GPIO_PIN(PORT_A,  6),
         .sclk_pin = GPIO_PIN(PORT_A,  5),
-        .cs_pin   = GPIO_UNDEF,
+        .cs_pin   = SPI_CS_UNDEF,
         .rccmask  = RCC_APB2ENR_SPI1EN,
         .apbbus   = APB2
     },
@@ -194,7 +143,7 @@ static const spi_conf_t spi_config[] = {
         .mosi_pin = GPIO_PIN(PORT_B, 15),
         .miso_pin = GPIO_PIN(PORT_B, 14),
         .sclk_pin = GPIO_PIN(PORT_B, 13),
-        .cs_pin   = GPIO_UNDEF,
+        .cs_pin   = SPI_CS_UNDEF,
         .rccmask  = RCC_APB1ENR_SPI2EN,
         .apbbus   = APB1
     }

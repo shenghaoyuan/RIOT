@@ -26,16 +26,23 @@
  * @}
  */
 
+#include <assert.h>
+
+#include "bitarithm.h"
 #include "cpu.h"
 #include "mutex.h"
-#include "assert.h"
+#include "periph/gpio.h"
 #include "periph/spi.h"
 #include "pm_layered.h"
+
+#define ENABLE_DEBUG        0
+#include "debug.h"
 
 /**
  * @brief   Number of bits to shift the BR value in the CR1 register
  */
 #define BR_SHIFT            (3U)
+#define BR_MAX              (7U)
 
 #ifdef SPI_CR2_FRXTH
 /* configure SPI for 8-bit data width */
@@ -52,6 +59,16 @@
  */
 static mutex_t locks[SPI_NUMOF];
 
+/**
+ * @brief   Clock configuration cache
+ */
+static uint32_t clocks[SPI_NUMOF];
+
+/**
+ * @brief   Clock divider cache
+ */
+static uint8_t dividers[SPI_NUMOF];
+
 static inline SPI_TypeDef *dev(spi_t bus)
 {
     return spi_config[bus].dev;
@@ -63,6 +80,35 @@ static inline bool _use_dma(const spi_conf_t *conf)
     return conf->tx_dma != DMA_STREAM_UNDEF && conf->rx_dma != DMA_STREAM_UNDEF;
 }
 #endif
+
+/**
+ * @brief Multiplier for clock divider calculations
+ *
+ * Makes the divider calculation fixed point
+ */
+#define SPI_APB_CLOCK_SHIFT          (4U)
+#define SPI_APB_CLOCK_MULT           (1U << SPI_APB_CLOCK_SHIFT)
+
+static uint8_t _get_clkdiv(const spi_conf_t *conf, uint32_t clock)
+{
+    uint32_t bus_clock = periph_apb_clk(conf->apbbus);
+    /* Shift bus_clock with SPI_APB_CLOCK_SHIFT to create a fixed point int */
+    uint32_t div = (bus_clock << SPI_APB_CLOCK_SHIFT) / (2 * clock);
+    DEBUG("[spi] clock: divider: %"PRIu32"\n", div);
+    /* Test if the divider is 2 or smaller, keeping the fixed point in mind */
+    if (div <= SPI_APB_CLOCK_MULT) {
+        return 0;
+    }
+    /* determine MSB and compensate back for the fixed point int shift */
+    uint8_t rounded_div = bitarithm_msb(div) - SPI_APB_CLOCK_SHIFT;
+    /* Determine if rounded_div is not a power of 2 */
+    if ((div & (div - 1)) != 0) {
+        /* increment by 1 to ensure that the clock speed at most the
+         * requested clock speed */
+        rounded_div++;
+    }
+    return rounded_div > BR_MAX ? BR_MAX : rounded_div;
+}
 
 void spi_init(spi_t bus)
 {
@@ -86,16 +132,33 @@ void spi_init(spi_t bus)
 void spi_init_pins(spi_t bus)
 {
 #ifdef CPU_FAM_STM32F1
-    gpio_init_af(spi_config[bus].sclk_pin, GPIO_AF_OUT_PP);
-    gpio_init_af(spi_config[bus].mosi_pin, GPIO_AF_OUT_PP);
-    gpio_init(spi_config[bus].miso_pin, GPIO_IN);
+
+    if (gpio_is_valid(spi_config[bus].sclk_pin)) {
+        gpio_init_af(spi_config[bus].sclk_pin, GPIO_AF_OUT_PP);
+    }
+
+    if (gpio_is_valid(spi_config[bus].mosi_pin)) {
+        gpio_init_af(spi_config[bus].mosi_pin, GPIO_AF_OUT_PP);
+    }
+
+    if (gpio_is_valid(spi_config[bus].miso_pin)) {
+        gpio_init(spi_config[bus].miso_pin, GPIO_IN);
+    }
 #else
-    gpio_init(spi_config[bus].mosi_pin, GPIO_OUT);
-    gpio_init(spi_config[bus].miso_pin, GPIO_IN);
-    gpio_init(spi_config[bus].sclk_pin, GPIO_OUT);
-    gpio_init_af(spi_config[bus].mosi_pin, spi_config[bus].mosi_af);
-    gpio_init_af(spi_config[bus].miso_pin, spi_config[bus].miso_af);
-    gpio_init_af(spi_config[bus].sclk_pin, spi_config[bus].sclk_af);
+    if (gpio_is_valid(spi_config[bus].mosi_pin)) {
+        gpio_init(spi_config[bus].mosi_pin, GPIO_OUT);
+        gpio_init_af(spi_config[bus].mosi_pin, spi_config[bus].mosi_af);
+    }
+
+    if (gpio_is_valid(spi_config[bus].miso_pin)) {
+        gpio_init(spi_config[bus].miso_pin, GPIO_IN);
+        gpio_init_af(spi_config[bus].miso_pin, spi_config[bus].miso_af);
+    }
+
+    if (gpio_is_valid(spi_config[bus].sclk_pin)) {
+        gpio_init(spi_config[bus].sclk_pin, GPIO_OUT);
+        gpio_init_af(spi_config[bus].sclk_pin, spi_config[bus].sclk_af);
+    }
 #endif
 }
 
@@ -104,13 +167,13 @@ int spi_init_cs(spi_t bus, spi_cs_t cs)
     if (bus >= SPI_NUMOF) {
         return SPI_NODEV;
     }
-    if (cs == SPI_CS_UNDEF ||
+    if (!gpio_is_valid(cs) ||
         (((cs & SPI_HWCS_MASK) == SPI_HWCS_MASK) && (cs & ~(SPI_HWCS_MASK)))) {
         return SPI_NOCS;
     }
 
     if (cs == SPI_HWCS_MASK) {
-        if (spi_config[bus].cs_pin == GPIO_UNDEF) {
+        if (!gpio_is_valid(spi_config[bus].cs_pin)) {
             return SPI_NOCS;
         }
 #ifdef CPU_FAM_STM32F1
@@ -139,19 +202,28 @@ int spi_init_with_gpio_mode(spi_t bus, spi_gpio_mode_t mode)
     /* This has no effect on STM32F1 */
     return ret;
 #else
-    ret += gpio_init(spi_config[bus].mosi_pin, mode.mosi);
-    ret += gpio_init(spi_config[bus].miso_pin, mode.miso);
-    ret += gpio_init(spi_config[bus].sclk_pin, mode.sclk);
-    gpio_init_af(spi_config[bus].mosi_pin, spi_config[bus].mosi_af);
-    gpio_init_af(spi_config[bus].miso_pin, spi_config[bus].miso_af);
-    gpio_init_af(spi_config[bus].sclk_pin, spi_config[bus].sclk_af);
+    if (gpio_is_valid(spi_config[bus].mosi_pin)) {
+        ret += gpio_init(spi_config[bus].mosi_pin, mode.mosi);
+        gpio_init_af(spi_config[bus].mosi_pin, spi_config[bus].mosi_af);
+    }
+
+    if (gpio_is_valid(spi_config[bus].miso_pin)) {
+        ret += gpio_init(spi_config[bus].miso_pin, mode.miso);
+        gpio_init_af(spi_config[bus].miso_pin, spi_config[bus].miso_af);
+    }
+
+    if (gpio_is_valid(spi_config[bus].sclk_pin)) {
+        ret += gpio_init(spi_config[bus].sclk_pin, mode.sclk);
+        gpio_init_af(spi_config[bus].sclk_pin, spi_config[bus].sclk_af);
+    }
     return ret;
 #endif
 }
 #endif
 
-int spi_acquire(spi_t bus, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk)
+void spi_acquire(spi_t bus, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk)
 {
+    assert((unsigned)bus < SPI_NUMOF);
 
     /* lock bus */
     mutex_lock(&locks[bus]);
@@ -162,7 +234,18 @@ int spi_acquire(spi_t bus, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk)
     /* enable SPI device clock */
     periph_clk_en(spi_config[bus].apbbus, spi_config[bus].rccmask);
     /* enable device */
-    uint8_t br = spi_divtable[spi_config[bus].apbbus][clk];
+    if (clk != clocks[bus]) {
+        dividers[bus] = _get_clkdiv(&spi_config[bus], clk);
+        clocks[bus] = clk;
+    }
+    uint8_t br = dividers[bus];
+
+    DEBUG("[spi] acquire: requested clock: %"PRIu32", resulting clock: %"PRIu32
+          " BR divider: %u\n",
+          clk,
+          periph_apb_clk(spi_config[bus].apbbus)/(1 << (br + 1)),
+          br);
+
     uint16_t cr1_settings = ((br << BR_SHIFT) | mode | SPI_CR1_MSTR);
     /* Settings to add to CR2 in addition to SPI_CR2_SETTINGS */
     uint16_t cr2_extra_settings = 0;
@@ -182,16 +265,16 @@ int spi_acquire(spi_t bus, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk)
                   spi_config[bus].tx_dma_chan,
                   (uint32_t*)&(dev(bus)->DR),
                   DMA_MEM_TO_PERIPH,
-                  0,
-                  DMA_DATA_WIDTH_BYTE);
+                  DMA_DATA_WIDTH_BYTE,
+                  0);
 
         dma_acquire(spi_config[bus].rx_dma);
         dma_setup(spi_config[bus].rx_dma,
                   spi_config[bus].rx_dma_chan,
                   (uint32_t*)&(dev(bus)->DR),
                   DMA_PERIPH_TO_MEM,
-                  0,
-                  DMA_DATA_WIDTH_BYTE);
+                  DMA_DATA_WIDTH_BYTE,
+                  0);
     }
 #endif
     dev(bus)->CR1 = cr1_settings;
@@ -199,8 +282,6 @@ int spi_acquire(spi_t bus, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk)
     if (cr2_extra_settings) {
         dev(bus)->CR2 = (SPI_CR2_SETTINGS | cr2_extra_settings);
     }
-
-    return SPI_OK;
 }
 
 void spi_release(spi_t bus)
@@ -256,8 +337,10 @@ static void _transfer_dma(spi_t bus, const void *out, void *in, size_t len)
     dma_wait(spi_config[bus].rx_dma);
     dma_wait(spi_config[bus].tx_dma);
 
-    /* No need to stop the DMA here, it is automatically disabled when the
-     * transfer is finished, only wait for SPI to leave the busy state */
+#ifdef DMA_CCR_EN
+    dma_stop(spi_config[bus].rx_dma);
+    dma_stop(spi_config[bus].tx_dma);
+#endif
     _wait_for_end(bus);
 }
 #endif
@@ -311,7 +394,7 @@ void spi_transfer_bytes(spi_t bus, spi_cs_t cs, bool cont,
 
     /* active the given chip select line */
     dev(bus)->CR1 |= (SPI_CR1_SPE);     /* this pulls the HW CS line low */
-    if ((cs != SPI_HWCS_MASK) && (cs != SPI_CS_UNDEF)) {
+    if ((cs != SPI_HWCS_MASK) && gpio_is_valid(cs)) {
         gpio_clear((gpio_t)cs);
     }
 
@@ -327,7 +410,7 @@ void spi_transfer_bytes(spi_t bus, spi_cs_t cs, bool cont,
 #endif
 
     /* release the chip select if not specified differently */
-    if ((!cont) && (cs != SPI_CS_UNDEF)) {
+    if ((!cont) && gpio_is_valid(cs)) {
         dev(bus)->CR1 &= ~(SPI_CR1_SPE);    /* pull HW CS line high */
         if (cs != SPI_HWCS_MASK) {
             gpio_set((gpio_t)cs);

@@ -4,9 +4,9 @@
 # General Public License v2.1. See the file LICENSE in the top level
 # directory for more details.
 #
-menuconfig KCONFIG_MODULE_ASYMCUTE
+menuconfig KCONFIG_USEMODULE_ASYMCUTE
     bool "Configure Asymcute"
-    depends on MODULE_ASYMCUTE
+    depends on USEMODULE_ASYMCUTE
     help
         Configure Asymcute using Kconfig.`Asymcute` is a asynchronous MQTT-SN
         client implementation, aiming at providing the user a high degree of
@@ -14,23 +14,26 @@ menuconfig KCONFIG_MODULE_ASYMCUTE
         any number of concurrent requests to one or more different gateways
         simultaneously.
 
-if KCONFIG_MODULE_ASYMCUTE
+if KCONFIG_USEMODULE_ASYMCUTE
 
-config ASYMCUTE_BUFSIZE_EXP
-    int "Exponent for the buffer size (resulting in the buffer size 2^n)"
-    default 7
+config ASYMCUTE_DEFAULT_PORT
+    int "Default UDP port to listen on"
+    default 1883
     help
-        As the buffer size ALWAYS needs to be power of two, this option
-        represents the exponent of 2^n, which will be used as the size of the
-        buffer ('ASYMCUTE_BUFSIZE'). Default value is 7 which corresponds to a
-        buffer size of 128.
+        Default UDP port to listen on (also used as SRC port). This will write
+        to macro 'CONFIG_ASYMCUTE_DEFAULT_PORT'. Usage can be found in
+        examples/asymcute_mqttsn
+
+config ASYMCUTE_BUFSIZE
+    int "Size of buffer used for receive and request buffers"
+    default 128
 
 config ASYMCUTE_TOPIC_MAXLEN
     int "Maximum topic length"
     default 32
     help
         Configure maximum length for client's topic. The value must be less than
-        (256 - 8) and less than ('ASYMCUTE_BUFSIZE' - 8).
+        (256 - 8) and less than ('CONFIG_ASYMCUTE_BUFSIZE' - 8).
 
 config ASYMCUTE_KEEPALIVE
     int "Keep alive interval in seconds"
@@ -85,4 +88,4 @@ config ASYMCUTE_N_RETRY
         information, see MQTT-SN Spec v1.2, section 6.13. For default values,
         see section 7.2 -> Nretry: 3-5.
 
-endif # KCONFIG_MODULE_ASYMCUTE
+endif # KCONFIG_USEMODULE_ASYMCUTE

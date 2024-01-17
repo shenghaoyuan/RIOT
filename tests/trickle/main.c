@@ -23,6 +23,11 @@
 #include "trickle.h"
 #include "thread.h"
 #include "msg.h"
+#if IS_USED(MODULE_ZTIMER_MSEC)
+#include "ztimer.h"
+#else
+#include "xtimer.h"
+#endif
 
 #define TRICKLE_MSG     (0xfeef)
 #define TR_IMIN         (8)
@@ -45,7 +50,11 @@ static trickle_t trickle = { .callback = { .func = &callback,
 static void callback(void *args)
 {
     (void) args;
+#if IS_USED(MODULE_ZTIMER_MSEC)
+    uint32_t now = ztimer_now(ZTIMER_MSEC);
+#else
     uint32_t now = xtimer_now_usec();
+#endif
 
     printf("now = %" PRIu32 ", t = %" PRIu32 "\n", now, trickle.t);
 
@@ -68,7 +77,7 @@ int main(void)
 
     msg_init_queue(_main_msg_queue, MAIN_QUEUE_SIZE);
 
-    trickle_start(sched_active_pid, &trickle, TRICKLE_MSG, TR_IMIN,
+    trickle_start(thread_getpid(), &trickle, TRICKLE_MSG, TR_IMIN,
                   TR_IDOUBLINGS, TR_REDCONST);
 
     puts("[START]");

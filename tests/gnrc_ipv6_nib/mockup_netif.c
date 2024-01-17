@@ -82,7 +82,7 @@ void _tests_init(void)
                            _get_address);
     int res = gnrc_netif_ethernet_create(&_netif,
            _mock_netif_stack, THREAD_STACKSIZE_DEFAULT, GNRC_NETIF_PRIO,
-            "mockup_eth", &_mock_netdev.netdev
+            "mockup_eth", &_mock_netdev.netdev.netdev
         );
     _mock_netif = &_netif;
     expect(res == 0);
@@ -92,7 +92,7 @@ void _tests_init(void)
     _mock_netif->ipv6.addrs_flags[0] &= ~GNRC_NETIF_IPV6_ADDRS_FLAGS_STATE_MASK;
     _mock_netif->ipv6.addrs_flags[0] |= GNRC_NETIF_IPV6_ADDRS_FLAGS_STATE_VALID;
     gnrc_netreg_entry_init_pid(&dumper, GNRC_NETREG_DEMUX_CTX_ALL,
-                               sched_active_pid);
+                               thread_getpid());
     gnrc_netreg_register(GNRC_NETTYPE_NDP, &dumper);
 }
 

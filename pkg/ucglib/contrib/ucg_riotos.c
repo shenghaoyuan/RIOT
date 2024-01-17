@@ -18,11 +18,12 @@
  * @}
  */
 
+#include <assert.h>
 #include <stdio.h>
 
 #include "ucg_riotos.h"
 
-#include "xtimer.h"
+#include "ztimer.h"
 
 #ifdef MODULE_PERIPH_SPI
 #include "periph/spi.h"
@@ -59,15 +60,15 @@ static void _enable_pins(const ucg_riotos_t *ucg_riot_ptr)
         return;
     }
 
-    if (ucg_riot_ptr->pin_cs != GPIO_UNDEF) {
+    if (gpio_is_valid(ucg_riot_ptr->pin_cs)) {
         gpio_init(ucg_riot_ptr->pin_cs, GPIO_OUT);
     }
 
-    if (ucg_riot_ptr->pin_cd != GPIO_UNDEF) {
+    if (gpio_is_valid(ucg_riot_ptr->pin_cd)) {
         gpio_init(ucg_riot_ptr->pin_cd, GPIO_OUT);
     }
 
-    if (ucg_riot_ptr->pin_reset != GPIO_UNDEF) {
+    if (gpio_is_valid(ucg_riot_ptr->pin_reset)) {
         gpio_init(ucg_riot_ptr->pin_reset, GPIO_OUT);
     }
 }
@@ -89,28 +90,31 @@ int16_t ucg_com_hw_spi_riotos(ucg_t *ucg, int16_t msg, uint16_t arg, uint8_t *da
 
             /* setup SPI */
             spi_init_pins(dev);
-            spi_acquire(dev, GPIO_UNDEF, SPI_MODE_0,
-                        ucg_serial_clk_speed_to_spi_speed(((ucg_com_info_t *)data)->serial_clk_speed));
+            /* correct alignment of data can be assumed, as in pkg callers use
+             * ucg_com_info_t to allocate memory */
+            ucg_com_info_t *info = (void *)(uintptr_t)data;
+            spi_clk_t speed = ucg_serial_clk_speed_to_spi_speed(info->serial_clk_speed);
+            spi_acquire(dev, GPIO_UNDEF, SPI_MODE_0, speed);
 
             break;
         case UCG_COM_MSG_POWER_DOWN:
             spi_release(dev);
             break;
         case UCG_COM_MSG_DELAY:
-            xtimer_usleep(arg);
+            ztimer_sleep(ZTIMER_USEC, arg);
             break;
         case UCG_COM_MSG_CHANGE_RESET_LINE:
-            if (ucg_riot_ptr != NULL &&  ucg_riot_ptr->pin_reset != GPIO_UNDEF) {
+            if (ucg_riot_ptr != NULL && gpio_is_valid(ucg_riot_ptr->pin_reset)) {
                 gpio_write(ucg_riot_ptr->pin_reset, arg);
             }
             break;
         case UCG_COM_MSG_CHANGE_CS_LINE:
-            if (ucg_riot_ptr != NULL &&  ucg_riot_ptr->pin_cs != GPIO_UNDEF) {
+            if (ucg_riot_ptr != NULL && gpio_is_valid(ucg_riot_ptr->pin_cs)) {
                 gpio_write(ucg_riot_ptr->pin_cs, arg);
             }
             break;
         case UCG_COM_MSG_CHANGE_CD_LINE:
-            if (ucg_riot_ptr != NULL &&  ucg_riot_ptr->pin_cd != GPIO_UNDEF) {
+            if (ucg_riot_ptr != NULL && gpio_is_valid(ucg_riot_ptr->pin_cd)) {
                 gpio_write(ucg_riot_ptr->pin_cd, arg);
             }
             break;

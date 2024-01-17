@@ -13,6 +13,8 @@
  * @author  Martine Lenders <m.lenders@fu-berlin.de>
  */
 
+#include <assert.h>
+
 #include "net/ipv6.h"
 #include "net/ipv6/ext.h"
 #include "net/ipv6/ext/opt.h"
@@ -21,7 +23,7 @@
 
 #include "net/gnrc/ipv6/ext/opt.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /**
@@ -49,6 +51,7 @@ static bool _multicast_dst(gnrc_pktsnip_t *pkt)
 gnrc_pktsnip_t *gnrc_ipv6_ext_opt_process(gnrc_pktsnip_t *pkt,
                                           uint8_t protnum)
 {
+    (void)protnum;
     assert(pkt != NULL);
     assert((protnum == PROTNUM_IPV6_EXT_HOPOPT) ||
            (protnum == PROTNUM_IPV6_EXT_DST));

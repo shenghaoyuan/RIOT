@@ -6,6 +6,7 @@
  * directory for more details.
  */
 
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 
@@ -16,7 +17,7 @@
 #include "periph/uart.h"
 #include "event/thread.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #ifndef AT_PRINT_INCOMING
@@ -173,7 +174,7 @@ int at_send_cmd(at_dev_t *dev, const char *command, uint32_t timeout)
     uart_write(dev->uart, (const uint8_t *)command, cmdlen);
     uart_write(dev->uart, (const uint8_t *)CONFIG_AT_SEND_EOL, AT_SEND_EOL_LEN);
 
-    if (AT_SEND_ECHO) {
+    if (!IS_ACTIVE(CONFIG_AT_SEND_SKIP_ECHO)) {
         if (at_expect_bytes(dev, command, timeout)) {
             return -1;
         }

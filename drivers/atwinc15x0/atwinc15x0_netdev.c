@@ -33,18 +33,18 @@
 #include "log.h"
 #include "net/netdev/eth.h"
 #include "od.h"
-#include "xtimer.h"
+#include "ztimer.h"
 
-#define ENABLE_DEBUG        (0)
-#define ENABLE_DEBUG_DUMP   (0)
+#define ENABLE_DEBUG        0
+#define ENABLE_DEBUG_DUMP   0
 #include "debug.h"
 
 #define ATWINC15X0_MAC_STR          "%02x:%02x:%02x:%02x:%02x:%02x"
 #define ATWINC15X0_MAC_STR_ARG(m)   m[0], m[1], m[2], m[3], m[4], m[5]
 
-#define ATWINC15X0_WAIT_TIME        (1 * US_PER_MS)
-#define ATWINC15X0_WAIT_TIMEOUT     (20)
-#define ATWINC15X0_WAIT_RECONNECT   (5 * US_PER_SEC)
+#define ATWINC15X0_WAIT_TIME_MS         (1)
+#define ATWINC15X0_WAIT_TIMEOUT         (20)
+#define ATWINC15X0_WAIT_RECONNECT_MS    (5000)
 
 /* Forward function declarations */
 static void _atwinc15x0_wifi_cb(uint8_t event, void *msg);
@@ -103,9 +103,10 @@ static void _atwinc15x0_eth_cb(uint8_t type, void *msg, void *ctrl_buf)
 
     DEBUG("%s type=%u msg=%p len=%d remaining=%d\n", __func__,
           type, msg, ctrl->u16DataSize, ctrl->u16RemainigDataSize);
-#if MODULE_OD && ENABLE_DEBUG_DUMP
-    od_hex_dump(msg, ctrl->u16DataSize, 16);
-#endif
+
+    if (IS_ACTIVE(ENABLE_DEBUG) && IS_USED(MODULE_OD)) {
+        od_hex_dump(msg, ctrl->u16DataSize, 16);
+    }
 
     /* the buffer shouldn't be used here */
     assert(atwinc15x0->rx_buf == NULL);
@@ -183,7 +184,7 @@ static void _atwinc15x0_wifi_cb(uint8_t type, void *msg)
                     atwinc15x0->netdev.event_callback(&atwinc15x0->netdev,
                                                       NETDEV_EVENT_LINK_DOWN);
                     /* wait and try to reconnect */
-                    xtimer_usleep(ATWINC15X0_WAIT_RECONNECT);
+                    ztimer_sleep(ZTIMER_MSEC, ATWINC15X0_WAIT_RECONNECT_MS);
                     _atwinc15x0_connect();
                     break;
                 case M2M_WIFI_CONNECTED:
@@ -258,12 +259,13 @@ static int _atwinc15x0_send(netdev_t *netdev, const iolist_t *iolist)
         }
     }
 
-#if ENABLE_DEBUG
-    DEBUG("%s send %d byte", __func__, tx_len);
-#if MODULE_OD && ENABLE_DEBUG_DUMP
-    od_hex_dump(dev->tx_buf, dev->tx_len, OD_WIDTH_DEFAULT);
-#endif /* MODULE_OD && ENABLE_DEBUG_HEXDUMP */
-#endif
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        DEBUG("%s send %d byte", __func__, tx_len);
+        if (IS_ACTIVE(ENABLE_DEBUG_DUMP) && IS_USED(MODULE_OD)) {
+            od_hex_dump(atwinc15x0_eth_buf, tx_len, OD_WIDTH_DEFAULT);
+        }
+    }
+
     irq_restore(state);
 
     /* send the the packet */
@@ -320,14 +322,15 @@ static int _atwinc15x0_recv(netdev_t *netdev, void *buf, size_t len, void *info)
     dev->rx_len = 0;
     dev->rx_buf = NULL;
 
-#if ENABLE_DEBUG
-    ethernet_hdr_t *hdr = (ethernet_hdr_t *)buf;
-    DEBUG("%s received %u byte from addr " ATWINC15X0_MAC_STR "\n",
-          __func__, rx_size, ATWINC15X0_MAC_STR_ARG(hdr->src));
-#if MODULE_OD && ENABLE_DEBUG_DUMP
-    od_hex_dump(buf, rx_size, OD_WIDTH_DEFAULT);
-#endif /* MODULE_OD && ENABLE_DEBUG_HEXDUMP */
-#endif /* ENABLE_DEBUG */
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        ethernet_hdr_t *hdr = (ethernet_hdr_t *)buf;
+        DEBUG("%s received %u byte from addr " ATWINC15X0_MAC_STR "\n",
+            __func__, rx_size, ATWINC15X0_MAC_STR_ARG(hdr->src));
+
+        if (IS_ACTIVE(ENABLE_DEBUG_DUMP) && IS_USED(MODULE_OD)) {
+            od_hex_dump(buf, rx_size, OD_WIDTH_DEFAULT);
+        }
+    }
 
     irq_restore(state);
 
@@ -345,7 +348,7 @@ static int _atwinc15x0_get(netdev_t *netdev, netopt_t opt, void *val,
     assert(dev == atwinc15x0);
 
     DEBUG("%s dev=%p opt=%u val=%p max_len=%u\n", __func__,
-          netdev, opt, val, max_len);
+          (void *)netdev, opt, val, max_len);
 
     switch (opt) {
         case NETOPT_IS_WIRED:
@@ -369,7 +372,7 @@ static int _atwinc15x0_get(netdev_t *netdev, netopt_t opt, void *val,
             return sizeof(uint16_t);
 
         case NETOPT_RSSI:
-            assert(max_len == sizeof(int8_t));
+            assert(max_len == sizeof(int16_t));
             _rssi_info_ready = false;
             /* trigger the request current RSSI (asynchronous function) */
             if (m2m_wifi_req_curr_rssi() != M2M_SUCCESS) {
@@ -378,11 +381,11 @@ static int _atwinc15x0_get(netdev_t *netdev, netopt_t opt, void *val,
             /* wait for the response with a given timeout */
             unsigned int _rssi_info_time_out = ATWINC15X0_WAIT_TIMEOUT;
             while (!_rssi_info_ready && _rssi_info_time_out--) {
-                xtimer_usleep(ATWINC15X0_WAIT_TIME);
+                ztimer_sleep(ZTIMER_MSEC, ATWINC15X0_WAIT_TIME_MS);
             }
             /* return the RSSI */
-            *((int8_t *)val) = dev->rssi;
-            return sizeof(int8_t);
+            *((int16_t *)val) = dev->rssi;
+            return sizeof(int16_t);
 
         default:
             return netdev_eth_get(netdev, opt, val, max_len);
@@ -395,7 +398,7 @@ static int _atwinc15x0_set(netdev_t *netdev, netopt_t opt, const void *val,
     assert(val);
 
     DEBUG("%s dev=%p opt=%u val=%p max_len=%u\n", __func__,
-          netdev, opt, val, max_len);
+          (void *)netdev, opt, val, max_len);
 
     switch (opt) {
         case NETOPT_ADDRESS:
@@ -415,7 +418,7 @@ static int _atwinc15x0_init(netdev_t *netdev)
     assert(dev);
     assert(dev == atwinc15x0);
 
-    DEBUG("%s dev=%p\n", __func__, dev);
+    DEBUG("%s dev=%p\n", __func__, (void *)dev);
 
     atwinc15x0->bsp_isr = NULL;
     atwinc15x0->bsp_irq_enabled = true;
@@ -492,7 +495,7 @@ static void _atwinc15x0_isr(netdev_t *netdev)
     assert(dev);
     assert(dev == atwinc15x0);
 
-    DEBUG("%s dev=%p\n", __func__, dev);
+    DEBUG("%s dev=%p\n", __func__, (void *)dev);
 
     /* handle pending ATWINC15x0 module events */
     while (m2m_wifi_handle_events(NULL) != M2M_SUCCESS) { }

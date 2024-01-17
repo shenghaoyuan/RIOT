@@ -7,21 +7,37 @@ USEMODULE += esp_common_periph
 USEMODULE += esp_freertos
 USEMODULE += esp_idf
 USEMODULE += log
-USEMODULE += newlib
 USEMODULE += periph
 USEMODULE += periph_hwrng
-USEMODULE += periph_flash
 USEMODULE += periph_uart
 USEMODULE += random
-USEMODULE += stdio_uart
+
+ifneq (,$(filter mtd,$(USEMODULE)))
+  USEMODULE += periph_flash
+endif
+
+ifeq (,$(filter stdio_% slipdev_stdio,$(USEMODULE)))
+  USEMODULE += stdio_uart
+endif
+
 USEMODULE += xtensa
+
+# Features used by ESP*
+
+FEATURES_REQUIRED += newlib
+FEATURES_REQUIRED += cpp # Vendor code uses C++
+
+ifneq (,$(filter esp_wifi_ap,$(USEMODULE)))
+  FEATURES_REQUIRED += esp_wifi_ap
+  USEMODULE += esp_wifi
+endif
 
 ifneq (,$(filter esp_wifi_enterprise,$(USEMODULE)))
   FEATURES_REQUIRED += esp_wifi_enterprise
   USEMODULE += esp_wifi
 endif
 
-ifneq (,$(filter netdev_default gnrc_netdev_default,$(USEMODULE)))
+ifneq (,$(filter netdev_default,$(USEMODULE)))
   ifneq (,$(filter lwip,$(USEMODULE)))
     # for lwip, use esp_wifi as default netdev if no other netdev is enabled
     ifeq (,$(filter esp_eth,$(USEMODULE)))
@@ -67,12 +83,5 @@ endif
 
 ifneq (,$(filter esp_wifi_any,$(USEMODULE)))
   USEMODULE += netopt
-  USEMODULE += xtimer
-endif
-
-ifneq (,$(filter esp_idf_heap,$(USEMODULE)))
-  LINKFLAGS += -Wl,-wrap,_malloc_r
-  LINKFLAGS += -Wl,-wrap,_calloc_r
-  LINKFLAGS += -Wl,-wrap,_realloc_r
-  LINKFLAGS += -Wl,-wrap,_free_r
+  USEMODULE += ztimer_msec
 endif

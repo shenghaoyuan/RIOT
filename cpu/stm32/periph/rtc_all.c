@@ -49,6 +49,8 @@
 #define EXTI_REG_FTSR       (EXTI->FTSR1)
 #define EXTI_REG_PR         (EXTI->PR1)
 #define EXTI_REG_IMR        (EXTI->IMR1)
+#elif defined(CPU_FAM_STM32L5)
+#define EXTI_REG_IMR        (EXTI->IMR1)
 #else
 #define EXTI_REG_RTSR       (EXTI->RTSR)
 #define EXTI_REG_FTSR       (EXTI->FTSR)
@@ -65,12 +67,20 @@
 #define RTC_ISR_INITF       RTC_ICSR_INITF
 #define RTC_ISR_ALRAWF      RTC_ICSR_ALRAWF
 #define RTC_ISR_ALRAF       RTC_SR_ALRAF
+#elif defined(CPU_FAM_STM32L5)
+#define RTC_REG_ISR         RTC->ICSR
+#define RTC_REG_SR          RTC->SR
+#define RTC_REG_SCR         RTC->SCR
+#define RTC_ISR_RSF         RTC_ICSR_RSF
+#define RTC_ISR_INIT        RTC_ICSR_INIT
+#define RTC_ISR_INITF       RTC_ICSR_INITF
 #else
 #define RTC_REG_ISR         RTC->ISR
 #endif
 
 /* interrupt line name mapping */
-#if defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32L0)
+#if defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32L0) || \
+    defined(CPU_FAM_STM32L5)
 #define IRQN                (RTC_IRQn)
 #define ISR_NAME            isr_rtc
 #else
@@ -84,6 +94,8 @@
 #define EXTI_FTSR_BIT       (EXTI_FTSR1_FT18)
 #define EXTI_RTSR_BIT       (EXTI_RTSR1_RT18)
 #define EXTI_PR_BIT         (EXTI_PR1_PIF18)
+#elif defined(CPU_FAM_STM32L5)
+#define EXTI_IMR_BIT        (EXTI_IMR1_IM17)
 #elif defined(CPU_FAM_STM32WB) || defined(CPU_FAM_STM32G4)
 #define EXTI_IMR_BIT        (EXTI_IMR1_IM17)
 #define EXTI_FTSR_BIT       (EXTI_FTSR1_FT17)
@@ -147,7 +159,7 @@
 #endif
 
 /* figure out sync and async prescaler */
-#if CLOCK_LSE
+#if IS_ACTIVE(CONFIG_BOARD_HAS_LSE)
 #define PRE_SYNC            (255)
 #define PRE_ASYNC           (127)
 #elif (CLOCK_LSI == 40000)
@@ -163,13 +175,12 @@
 #error "rtc: unable to determine RTC SYNC and ASYNC prescalers from LSI value"
 #endif
 
-/* struct tm counts years since 1900 but RTC has only two-digit year hence the
- * offset of 100 years. */
-#define YEAR_OFFSET         (100)
+/* struct tm counts years since 1900 but RTC has only two-digit year, hence the offset */
+#define YEAR_OFFSET         (RIOT_EPOCH - 1900)
 
 /* Use a magic number to determine the initial RTC source. This will be used
    to know if a reset of the RTC is required at initialization. */
-#if CLOCK_LSE
+#if IS_ACTIVE(CONFIG_BOARD_HAS_LSE)
 #define MAGIC_CLCK_NUMBER       (0x1970)
 #else
 #define MAGIC_CLCK_NUMBER       (0x1971)
@@ -198,7 +209,7 @@ static int bcd2val(uint32_t val, int shift, uint32_t mask)
     return (((tmp >> 4) * 10) + (tmp & 0x0f));
 }
 
-static inline void rtc_unlock(void)
+void rtc_unlock(void)
 {
     /* enable backup clock domain */
     stmclk_dbp_unlock();
@@ -210,7 +221,7 @@ static inline void rtc_unlock(void)
     while (!(RTC_REG_ISR & RTC_ISR_INITF)) {}
 }
 
-static inline void rtc_lock(void)
+void rtc_lock(void)
 {
     /* exit RTC init mode */
     RTC_REG_ISR &= ~RTC_ISR_INIT;
@@ -241,8 +252,11 @@ void rtc_init(void)
 
     /* select input clock and enable the RTC */
     stmclk_dbp_unlock();
+    #if defined(CPU_FAM_STM32L5)
+    periph_clk_en(APB1, RCC_APB1ENR1_RTCAPBEN);
+    #endif
     EN_REG &= ~(CLKSEL_MASK);
-#if CLOCK_LSE
+#if IS_ACTIVE(CONFIG_BOARD_HAS_LSE)
     EN_REG |= (CLKSEL_LSE | EN_BIT);
 #else
     EN_REG |= (CLKSEL_LSI | EN_BIT);
@@ -258,10 +272,12 @@ void rtc_init(void)
 
     /* configure the EXTI channel, as RTC interrupts are routed through it.
      * Needs to be configured to trigger on rising edges. */
+    EXTI_REG_IMR  |= EXTI_IMR_BIT;
+#if !defined(CPU_FAM_STM32L5)
     EXTI_REG_FTSR &= ~(EXTI_FTSR_BIT);
     EXTI_REG_RTSR |= EXTI_RTSR_BIT;
-    EXTI_REG_IMR  |= EXTI_IMR_BIT;
     EXTI_REG_PR   = EXTI_PR_BIT;
+#endif
     /* enable global RTC interrupt */
     NVIC_EnableIRQ(IRQN);
 }
@@ -273,7 +289,7 @@ int rtc_set_time(struct tm *time)
 
     rtc_unlock();
 
-    RTC->DR = (val2bcd((time->tm_year % 100), RTC_DR_YU_Pos, DR_Y_MASK) |
+    RTC->DR = (val2bcd((time->tm_year - YEAR_OFFSET), RTC_DR_YU_Pos, DR_Y_MASK) |
                val2bcd(time->tm_mon + 1,  RTC_DR_MU_Pos, DR_M_MASK) |
                val2bcd(time->tm_mday, RTC_DR_DU_Pos, DR_D_MASK));
     RTC->TR = (val2bcd(time->tm_hour, RTC_TR_HU_Pos, TR_H_MASK) |
@@ -305,10 +321,10 @@ int rtc_set_alarm(struct tm *time, rtc_alarm_cb_t cb, void *arg)
     /* normalize input */
     rtc_tm_normalize(time);
 
-    rtc_unlock();
-
     /* disable existing alarm (if enabled) */
     rtc_clear_alarm();
+
+    rtc_unlock();
 
     /* save callback and argument */
     isr_ctx.cb = cb;
@@ -321,7 +337,11 @@ int rtc_set_alarm(struct tm *time, rtc_alarm_cb_t cb, void *arg)
                    val2bcd(time->tm_sec,  RTC_ALRMAR_SU_Pos, ALRM_S_MASK));
 
     /* Enable Alarm A */
+#if !defined(CPU_FAM_STM32L5)
     RTC_REG_ISR &= ~(RTC_ISR_ALRAF);
+#else
+    RTC_REG_SCR = RTC_SCR_CALRAF;
+#endif
     RTC->CR |= (RTC_CR_ALRAE | RTC_CR_ALRAIE);
 
     rtc_lock();
@@ -346,11 +366,20 @@ int rtc_get_alarm(struct tm *time)
 
 void rtc_clear_alarm(void)
 {
+    rtc_unlock();
+
     RTC->CR &= ~(RTC_CR_ALRAE | RTC_CR_ALRAIE);
+
+#if !defined(CPU_FAM_STM32L5)
     while (!(RTC_REG_ISR & RTC_ISR_ALRAWF)) {}
+#else
+    RTC_REG_SCR = RTC_SCR_CALRAF;
+#endif
 
     isr_ctx.cb = NULL;
     isr_ctx.arg = NULL;
+
+    rtc_lock();
 }
 
 void rtc_poweron(void)
@@ -369,6 +398,7 @@ void rtc_poweroff(void)
 
 void ISR_NAME(void)
 {
+#if !defined(CPU_FAM_STM32L5)
     if (RTC_REG_ISR & RTC_ISR_ALRAF) {
         if (isr_ctx.cb != NULL) {
             isr_ctx.cb(isr_ctx.arg);
@@ -376,5 +406,17 @@ void ISR_NAME(void)
         RTC_REG_ISR &= ~RTC_ISR_ALRAF;
     }
     EXTI_REG_PR = EXTI_PR_BIT; /* only clear the associated bit */
+#else
+    if (RTC_REG_SR & RTC_SR_ALRAF) {
+        if (isr_ctx.cb != NULL) {
+            isr_ctx.cb(isr_ctx.arg);
+        }
+        /* RTC registers are write access protected, DBP bit must be set to enable access */
+        stmclk_dbp_unlock();
+        RTC_REG_SCR = RTC_SCR_CALRAF;
+        /* Lock to avoid parasitic write access */
+        stmclk_dbp_lock();
+    }
+#endif
     cortexm_isr_end();
 }

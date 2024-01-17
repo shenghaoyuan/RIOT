@@ -13,6 +13,7 @@
  * @author  Martine Lenders <m.lenders@fu-berlin.de>
  */
 
+#include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <string.h>
@@ -29,7 +30,7 @@
 #include "_nib-internal.h"
 #include "_nib-router.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 /* pointers for default router selection */
@@ -110,11 +111,9 @@ _nib_onl_entry_t *_nib_onl_alloc(const ipv6_addr_t *addr, unsigned iface)
     if (node != NULL) {
         _override_node(addr, iface, node);
     }
-#if ENABLE_DEBUG
     else {
         DEBUG("  NIB full\n");
     }
-#endif  /* ENABLE_DEBUG */
     return node;
 }
 
@@ -527,7 +526,7 @@ static inline bool _in_dsts(const _nib_offl_entry_t *dst)
 #if IS_ACTIVE(CONFIG_GNRC_IPV6_NIB_MULTIHOP_P6C)
 static inline unsigned _idx_dsts(const _nib_offl_entry_t *dst)
 {
-    return (dst - _dsts) / sizeof(*dst);
+    return (dst - _dsts);
 }
 
 static inline bool _in_abrs(const _nib_abr_entry_t *abr)
@@ -680,6 +679,38 @@ void _nib_pl_remove(_nib_offl_entry_t *nib_offl)
 #endif  /* CONFIG_GNRC_IPV6_NIB_MULTIHOP_P6C */
 }
 
+void _nib_offl_remove_prefix(_nib_offl_entry_t *pfx)
+{
+    gnrc_netif_t *netif;
+
+    /* remove prefix timer */
+    evtimer_del(&_nib_evtimer, &pfx->pfx_timeout.event);
+
+    /* get interface associated with prefix */
+    netif = gnrc_netif_get_by_pid(_nib_onl_get_if(pfx->next_hop));
+
+    if (netif != NULL) {
+        uint8_t best_match_len = pfx->pfx_len;
+        ipv6_addr_t *best_match = NULL;
+
+        /* remove address associated with prefix */
+        for (int i = 0; i < CONFIG_GNRC_NETIF_IPV6_ADDRS_NUMOF; i++) {
+            if (ipv6_addr_match_prefix(&netif->ipv6.addrs[i],
+                                       &pfx->pfx) >= best_match_len) {
+                best_match_len = pfx->pfx_len;
+                best_match = &netif->ipv6.addrs[i];
+            }
+        }
+        if (best_match != NULL) {
+            gnrc_netif_ipv6_addr_remove_internal(netif,
+                                                 best_match);
+        }
+    }
+
+    /* remove prefix */
+    _nib_pl_remove(pfx);
+}
+
 #if IS_ACTIVE(CONFIG_GNRC_IPV6_NIB_MULTIHOP_P6C)
 _nib_abr_entry_t *_nib_abr_add(const ipv6_addr_t *addr)
 {
@@ -704,11 +735,9 @@ _nib_abr_entry_t *_nib_abr_add(const ipv6_addr_t *addr)
         DEBUG("  using %p\n", (void *)abr);
         memcpy(&abr->addr, addr, sizeof(abr->addr));
     }
-#if ENABLE_DEBUG
     else {
         DEBUG("  NIB full\n");
     }
-#endif  /* ENABLE_DEBUG */
     return abr;
 }
 

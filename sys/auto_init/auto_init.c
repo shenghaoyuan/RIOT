@@ -21,33 +21,48 @@
  */
 #include <stdint.h>
 #include <stdio.h>
-
+#include "sched.h"
 #include "auto_init.h"
 #include "kernel_defines.h"
 #include "log.h"
 
 void auto_init(void)
 {
-    if (IS_USED(MODULE_AUTO_INIT_RANDOM)) {
-        LOG_DEBUG("Auto init random.\n");
-        extern void auto_init_random(void);
-        auto_init_random();
-    }
     if (IS_USED(MODULE_AUTO_INIT_ZTIMER)) {
         LOG_DEBUG("Auto init ztimer.\n");
         void ztimer_init(void);
         ztimer_init();
     }
+    if (IS_USED(MODULE_AUTO_INIT_ZTIMER64)) {
+        LOG_DEBUG("Auto init ztimer64.\n");
+        void ztimer64_init(void);
+        ztimer64_init();
+    }
     if (IS_USED(MODULE_AUTO_INIT_XTIMER) &&
-            !IS_USED(MODULE_ZTIMER_XTIMER_COMPAT)) {
+        !IS_USED(MODULE_ZTIMER_XTIMER_COMPAT)) {
         LOG_DEBUG("Auto init xtimer.\n");
         extern void xtimer_init(void);
         xtimer_init();
+    }
+    if (IS_USED(MODULE_AUTO_INIT_RANDOM)) {
+        LOG_DEBUG("Auto init random.\n");
+        extern void auto_init_random(void);
+        auto_init_random();
     }
     if (IS_USED(MODULE_SCHEDSTATISTICS)) {
         LOG_DEBUG("Auto init schedstatistics.\n");
         extern void init_schedstatistics(void);
         init_schedstatistics();
+    }
+    if (IS_USED(MODULE_SCHED_ROUND_ROBIN)) {
+        LOG_DEBUG("Auto init sched_round_robin.\n");
+        extern void sched_round_robin_init(void);
+        sched_round_robin_init();
+    }
+    if (IS_USED(MODULE_SCHED_RBPF)) {
+        LOG_DEBUG("Auto init sched rbpf.\n");
+        extern void init_sched_rbpf(void);
+        init_sched_rbpf();
     }
     if (IS_USED(MODULE_DUMMY_THREAD)) {
         extern void dummy_thread_create(void);
@@ -57,6 +72,11 @@ void auto_init(void)
         LOG_DEBUG("Auto init event threads.\n");
         extern void auto_init_event_thread(void);
         auto_init_event_thread();
+    }
+    if (IS_USED(MODULE_SYS_BUS)) {
+        LOG_DEBUG("Auto init system buses.\n");
+        extern void auto_init_sys_bus(void);
+        auto_init_sys_bus();
     }
     if (IS_USED(MODULE_MCI)) {
         LOG_DEBUG("Auto init mci.\n");
@@ -85,7 +105,7 @@ void auto_init(void)
     }
     if (IS_USED(MODULE_AUTO_INIT_GNRC_IPV6)) {
         LOG_DEBUG("Auto init gnrc_ipv6.\n");
-        extern void gnrc_ipv6_init(void);
+        extern kernel_pid_t gnrc_ipv6_init(void);
         gnrc_ipv6_init();
     }
     if (IS_USED(MODULE_AUTO_INIT_GNRC_UDP)) {
@@ -95,13 +115,18 @@ void auto_init(void)
     }
     if (IS_USED(MODULE_AUTO_INIT_GNRC_TCP)) {
         LOG_DEBUG("Auto init gnrc_tcp.\n");
-        extern void gnrc_tcp_init(void);
+        extern int gnrc_tcp_init(void);
         gnrc_tcp_init();
     }
     if (IS_USED(MODULE_AUTO_INIT_LWIP)) {
         LOG_DEBUG("Bootstraping lwIP.\n");
         extern void lwip_bootstrap(void);
         lwip_bootstrap();
+    }
+    if (IS_USED(MODULE_SOCK_DTLS)) {
+        LOG_DEBUG("Auto init sock_dtls.\n");
+        extern void sock_dtls_init(void);
+        sock_dtls_init();
     }
     if (IS_USED(MODULE_OPENTHREAD)) {
         LOG_DEBUG("Bootstrapping openthread.\n");
@@ -112,6 +137,16 @@ void auto_init(void)
         LOG_DEBUG("Bootstrapping openwsn.\n");
         extern void openwsn_bootstrap(void);
         openwsn_bootstrap();
+    }
+    if (IS_USED(MODULE_AUTO_INIT_MYNEWT_CORE)) {
+        LOG_DEBUG("Bootstrapping mynewt-core.\n");
+        extern void mynewt_core_init(void);
+        mynewt_core_init();
+    }
+    if (IS_USED(MODULE_AUTO_INIT_UWB_CORE)) {
+        LOG_DEBUG("Bootstrapping uwb core.\n");
+        extern void uwb_core_init(void);
+        uwb_core_init();
     }
     if (IS_USED(MODULE_GCOAP) &&
         !IS_ACTIVE(CONFIG_GCOAP_NO_AUTO_INIT)) {
@@ -159,10 +194,10 @@ void auto_init(void)
         extern void auto_init_loramac(void);
         auto_init_loramac();
     }
-    if (IS_USED(MODULE_SOCK_DTLS)) {
-        LOG_DEBUG("Auto init sock_dtls.\n");
-        extern void sock_dtls_init(void);
-        sock_dtls_init();
+    if (IS_USED(MODULE_DSM)) {
+        LOG_DEBUG("Auto init dsm.\n");
+        extern void dsm_init(void);
+        dsm_init();
     }
 
     /* initialize USB devices */
@@ -228,6 +263,12 @@ void auto_init(void)
         suit_init_conditions();
     }
 
+    if (IS_USED(MODULE_MBEDTLS)) {
+        LOG_DEBUG("Auto init mbed TLS.\n");
+        extern void auto_init_mbedtls(void);
+        auto_init_mbedtls();
+    }
+
     if (IS_USED(MODULE_AUTO_INIT_SECURITY)) {
         if (IS_USED(MODULE_CRYPTOAUTHLIB)) {
             LOG_DEBUG("Auto init cryptoauthlib.\n");
@@ -247,10 +288,21 @@ void auto_init(void)
         dhcpv6_client_auto_init();
     }
 
-    if (IS_USED(MODULE_GNRC_DHCPV6_CLIENT_6LBR)) {
-        LOG_DEBUG("Auto init 6LoWPAN border router DHCPv6 client\n");
-        extern void gnrc_dhcpv6_client_6lbr_init(void);
-        gnrc_dhcpv6_client_6lbr_init();
+    if (IS_USED(MODULE_AUTO_INIT_DHCPV6_RELAY)) {
+        LOG_DEBUG("Auto init DHCPv6 relay agent.\n");
+        extern void dhcpv6_relay_auto_init(void);
+        dhcpv6_relay_auto_init();
+    }
+
+    if (IS_USED(MODULE_GNRC_DHCPV6_CLIENT_SIMPLE_PD)) {
+        LOG_DEBUG("Auto init DHCPv6 client for simple prefix delegation\n");
+        extern void gnrc_dhcpv6_client_simple_pd_init(void);
+        gnrc_dhcpv6_client_simple_pd_init();
+    }
+
+    if (IS_USED(MODULE_GNRC_IPV6_AUTO_SUBNETS_AUTO_INIT)) {
+        extern void gnrc_ipv6_auto_subnets_init(void);
+        gnrc_ipv6_auto_subnets_init();
     }
 
     if (IS_USED(MODULE_AUTO_INIT_MULTIMEDIA)) {
@@ -259,5 +311,17 @@ void auto_init(void)
             extern void auto_init_dfplayer(void);
             auto_init_dfplayer();
         }
+    }
+
+    if (IS_USED(MODULE_AUTO_INIT_SCREEN)) {
+        LOG_DEBUG("Auto init screen devices\n");
+        extern void auto_init_screen(void);
+        auto_init_screen();
+    }
+
+    if (IS_USED(MODULE_AUTO_INIT_BENCHMARK_UDP)) {
+        LOG_DEBUG("Auto init UDP benchmark\n");
+        extern void benchmark_udp_auto_init(void);
+        benchmark_udp_auto_init();
     }
 }

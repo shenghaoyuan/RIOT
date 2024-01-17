@@ -24,6 +24,8 @@ This example comes with support for three uplink types pre-configured:
 
 For `native` the host-facing [`netdev_tap`](https://doc.riot-os.org/netdev__tap_8h.html) device
 is configured, providing connectivity via a TAP interface to the RIOT instance.
+On the node-facing side [`socket_zep`](https://doc.riot-os.org/group__drivers__socket__zep.html)
+is used to simulate a IEEE 802.15.4 network.
 
 To select an uplink, set the UPLINK environment variable. For instance, use `UPLINK=slip`
 for a SLIP uplink.
@@ -111,7 +113,7 @@ For instance, if you use the [`gnrc_networking`](https://github.com/RIOT-OS/RIOT
 ping it from your machine with:
 
 ```
-> ping6 2001:db8:0:1234:0:567:8:1
+> ping 2001:db8:0:1234:0:567:8:1
 ```
 
 Just replace this address by your mote's address.
@@ -138,10 +140,21 @@ You can check your ULA on your PC with `ifconfig` Linux command.
 On this example, such address can be pinged from 6lo motes:
 
 ```
-> ping6 fd00:dead:beef::1
+> ping fd00:dead:beef::1
 ```
 
 Thus far, IPv6 communication with between your PC and your motes is enabled.
+
+### Simulated network with native
+
+On native a IEEE 802.15.4 network is simulated by encapsulating 802.15.4 frames
+inside UDP packets. For this the `socket_zep` modules is used both on the border
+router and on the virtual mote.
+
+The UDP packets are sent to a dispatcher which forwards them to all other nodes.
+By default a simple dispatcher is provided that will forward every packet to
+every node (perfect broadcast), but it can be replaced by the user with alternative
+dispatchers to simulate more advanced topologies.
 
 # gnrc_border_router with manual config
 You can use `ethos` as a standalone driver, if you want to setup the BR manually.
@@ -215,7 +228,7 @@ Now, you should be able to ping your nodes.
 Use the global address starting by your prefix, on our case `2001:db8::`:
 
 ```
-> ping6 2001:db8:0:1234:0:567:8:1
+> ping 2001:db8:0:1234:0:567:8:1
 ```
 
 # gnrc_networking_border_router with SLIP

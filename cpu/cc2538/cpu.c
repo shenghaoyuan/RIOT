@@ -17,7 +17,6 @@
  * @}
  */
 
-#include <assert.h>
 #include "stdio_base.h"
 
 #include "cpu.h"
@@ -42,7 +41,6 @@ void cpu_init(void)
     /* trigger static peripheral initialization */
     periph_init();
 }
-
 
 /**
  * @brief Configure the controllers clock system

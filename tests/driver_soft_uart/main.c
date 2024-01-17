@@ -72,7 +72,7 @@ static int parse_dev(char *arg)
 
 static void rx_cb(void *arg, uint8_t data)
 {
-    uart_t dev = (uart_t)arg;
+    uart_t dev = (soft_uart_t)arg;
 
     ringbuffer_add_one(&(ctx[dev].rx_buf), data);
     if (data == '\n' || ringbuffer_full(&(ctx[dev].rx_buf))) {
@@ -267,7 +267,6 @@ int main(void)
          "Then you can send data on that interface and you should see the data\n"
          "being printed to STDOUT\n\n"
          "NOTE: all strings need to be '\\n' terminated!\n");
-
 
     puts("\nUART INFO:");
     printf("Available devices:               %i\n", SOFT_UART_NUMOF);

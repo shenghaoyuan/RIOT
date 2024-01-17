@@ -38,8 +38,8 @@ welcome:
 	@echo ""
 	@echo "Please see our Quick Start Guide at:"
 	@echo "    https://doc.riot-os.org/getting-started.html"
-	@echo "Or ask questions on our mailing list:"
-	@echo "    users@riot-os.org (http://lists.riot-os.org/mailman/listinfo/users)"
+	@echo "You can ask questions or discuss with other users on our forum:"
+	@echo "    https://forum.riot-os.org"
 
 print-versions:
 	@./dist/tools/ci/print_toolchain_versions.sh

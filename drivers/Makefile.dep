@@ -36,6 +36,10 @@ ifneq (,$(filter bm%280_spi,$(USEMODULE)))
   USEMODULE += bmx280
 endif
 
+ifneq (,$(filter bq2429x_int,$(USEMODULE)))
+  USEMODULE += bq2429x
+endif
+
 ifneq (,$(filter cc110%,$(USEMODULE)))
   USEMODULE += cc110x
 endif
@@ -44,8 +48,20 @@ ifneq (,$(filter ccs811_%,$(USEMODULE)))
   USEMODULE += ccs811
 endif
 
+ifneq (,$(filter ethos_%,$(USEMODULE)))
+  USEMODULE += ethos
+endif
+
+ifneq (,$(filter ft6% ft5% ft3%,$(USEMODULE)))
+  USEMODULE += ft5x06
+endif
+
 ifneq (,$(filter hmc5883l_%,$(USEMODULE)))
   USEMODULE += hmc5883l
+endif
+
+ifneq (,$(filter hm330%,$(USEMODULE)))
+  USEMODULE += hm330x
 endif
 
 ifneq (,$(filter ina2%,$(USEMODULE)))
@@ -64,7 +80,15 @@ ifneq (,$(filter lis2dh12%,$(USEMODULE)))
   USEMODULE += lis2dh12
 endif
 
-ifneq (,$(filter lps331ap lps2%hb,$(USEMODULE)))
+ifneq (,$(filter llcc68,$(USEMODULE)))
+  USEMODULE += sx126x
+endif
+
+ifneq (,$(filter tmp1075 lm75%,$(USEMODULE)))
+  USEMODULE += lm75
+endif
+
+ifneq (,$(filter lps331ap lps2%hb lps22hh,$(USEMODULE)))
   USEMODULE += lpsxxx
 endif
 
@@ -97,12 +121,38 @@ ifneq (,$(filter nrfmin,$(USEMODULE)))
   USEMODULE += netif
 endif
 
+ifneq (,$(filter nrf24l01p_ng_%,$(USEMODULE)))
+  USEMODULE += nrf24l01p_ng
+endif
+
+ifneq (,$(filter pcf857%,$(USEMODULE)))
+  USEMODULE += pcf857x
+endif
+
+ifneq (,$(filter periph_ptp_timer periph_ptp_speed_adjustment,$(FEATURES_USED)))
+  FEATURES_REQUIRED += periph_ptp
+endif
+
+ifneq (,$(filter pn532_i2c,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_i2c
+  USEMODULE += pn532
+endif
+
+ifneq (,$(filter pn532_spi,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_spi
+  USEMODULE += pn532
+endif
+
 ifneq (,$(filter qmc5883l_%,$(USEMODULE)))
   USEMODULE += qmc5883l
 endif
 
 ifneq (,$(filter rn2%3,$(USEMODULE)))
   USEMODULE += rn2xx3
+endif
+
+ifneq (,$(filter sdp3x_%,$(USEMODULE)))
+  USEMODULE += sdp3x
 endif
 
 ifneq (,$(filter sht1%,$(USEMODULE)))
@@ -121,6 +171,14 @@ ifneq (,$(filter slipdev_%,$(USEMODULE)))
   USEMODULE += slipdev
 endif
 
+ifneq (,$(filter stmpe811_%,$(USEMODULE)))
+  USEMODULE += stmpe811
+endif
+
+ifneq (,$(filter sx126%,$(USEMODULE)))
+  USEMODULE += sx126x
+endif
+
 ifneq (,$(filter sx127%,$(USEMODULE)))
   USEMODULE += sx127x
 endif
@@ -135,4 +193,46 @@ endif
 
 ifneq (,$(filter ws281x_%,$(USEMODULE)))
   USEMODULE += ws281x
+endif
+
+ifneq (,$(filter saul_adc,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_adc
+endif
+
+ifneq (,$(filter saul_gpio,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_gpio
+endif
+
+ifneq (,$(filter saul_pwm,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_pwm
+endif
+
+ifneq (,$(filter saul,$(USEMODULE)))
+  USEMODULE += phydat
+endif
+
+ifneq (,$(filter saul_nrf_temperature,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_temperature
+endif
+
+# Enable periph_uart when periph_uart_nonblocking is enabled
+ifneq (,$(filter periph_uart_nonblocking,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_uart
+endif
+
+# Enable periph_gpio when periph_gpio_irq is enabled
+ifneq (,$(filter periph_gpio_irq,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_gpio
+endif
+
+ifneq (,$(filter periph_timer_periodic,$(USEMODULE)))
+  FEATURES_REQUIRED += periph_timer
+endif
+
+ifneq (,$(filter-out netdev_default, $(filter netdev_%,$(USEMODULE))))
+  USEMODULE += netdev
+  # Don't register netdevs if there is only a single one of them
+  ifeq (,$(filter gnrc_netif_single,$(USEMODULE)))
+    USEMODULE += netdev_register
+  endif
 endif

@@ -73,7 +73,6 @@
 #ifndef NET_GNRC_LWMAC_LWMAC_H
 #define NET_GNRC_LWMAC_LWMAC_H
 
-#include "kernel_types.h"
 #include "net/gnrc/netif.h"
 
 #ifdef __cplusplus
@@ -317,6 +316,19 @@ extern "C" {
 /** @} */
 
 /**
+* @brief Maximum preamble attempts before re-initialize radio in LWMAC.
+*
+* After a long period of run time, a radio may be in wrong condition which needs to be
+* re-calibrated. This is indicated by having a series of continuous preamble failure (no WA)
+* in LWMAC. In case we have @ref CONFIG_GNRC_LWMAC_RADIO_REINIT_THRESHOLD number of preamble
+* failure, then we re-initialize the radio, trying to re-calibrate the radio for bringing it
+* back to normal condition.
+*/
+#ifndef CONFIG_GNRC_LWMAC_RADIO_REINIT_THRESHOLD
+#define CONFIG_GNRC_LWMAC_RADIO_REINIT_THRESHOLD     (10U)
+#endif
+
+/**
  * @brief   Creates an IEEE 802.15.4 LWMAC network interface
  *
  * @param[out] netif    The interface. May not be `NULL`.
@@ -332,7 +344,7 @@ extern "C" {
  * @return  negative number on error
  */
 int gnrc_netif_lwmac_create(gnrc_netif_t *netif, char *stack, int stacksize,
-                            char priority, char *name, netdev_t *dev);
+                            char priority, const char *name, netdev_t *dev);
 #ifdef __cplusplus
 }
 #endif

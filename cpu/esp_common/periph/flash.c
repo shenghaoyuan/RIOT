@@ -18,12 +18,12 @@
  * @}
  */
 
-#if MODULE_MTD
-
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
 
+#include "architecture.h"
 #include "board.h"
 #include "esp_common.h"
 #include "irq_arch.h"
@@ -47,7 +47,7 @@
 
 #endif /* MCU_ESP32 */
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define ESP_PART_TABLE_ADDR         0x8000 /* TODO configurable as used in Makefile.include */
@@ -58,8 +58,8 @@
 /* the external pointer to the system MTD device */
 mtd_dev_t* mtd0 = 0;
 
-mtd_dev_t  _flash_dev;
-mtd_desc_t _flash_driver;
+static mtd_dev_t  _flash_dev;
+static mtd_desc_t _flash_driver;
 
 #ifdef MCU_ESP8266
 
@@ -77,6 +77,8 @@ extern uint32_t spi_flash_get_id(void);
 static int _flash_init  (mtd_dev_t *dev);
 static int _flash_read  (mtd_dev_t *dev, void *buff, uint32_t addr, uint32_t size);
 static int _flash_write (mtd_dev_t *dev, const void *buff, uint32_t addr, uint32_t size);
+static int _flash_write_page (mtd_dev_t *dev, const void *buff, uint32_t page,
+                              uint32_t offset, uint32_t size);
 static int _flash_erase (mtd_dev_t *dev, uint32_t addr, uint32_t size);
 static int _flash_power (mtd_dev_t *dev, enum mtd_power_state power);
 
@@ -120,6 +122,7 @@ void spi_flash_drive_init (void)
     _flash_driver.init  = &_flash_init;
     _flash_driver.read  = &_flash_read;
     _flash_driver.write = &_flash_write;
+    _flash_driver.write_page = &_flash_write_page;
     _flash_driver.erase = &_flash_erase;
     _flash_driver.power = &_flash_power;
 
@@ -130,10 +133,12 @@ void spi_flash_drive_init (void)
 
     /* read in partition table an determine the top of all partitions */
     uint32_t part_addr = ESP_PART_TABLE_ADDR;
-    uint8_t  part_buf[ESP_PART_ENTRY_SIZE];
+    uint8_t WORD_ALIGNED part_buf[ESP_PART_ENTRY_SIZE];
     bool     part_read = true;
     uint32_t part_top = 0;
-    esp_partition_info_t* part = (esp_partition_info_t*)part_buf;
+    /* Use intermediate cast to uintptr_t to silence false positive of
+     * -Wcast-align. We aligned part_buf to word size via attribute */
+    esp_partition_info_t* part = (esp_partition_info_t*)(uintptr_t)part_buf;
 
     while (part_read && part_addr < ESP_PART_TABLE_ADDR + ESP_PART_TABLE_SIZE) {
         spi_flash_read (part_addr, (void*)part_buf, ESP_PART_ENTRY_SIZE);
@@ -213,7 +218,7 @@ void spi_flash_drive_init (void)
     return ESP_FAIL; \
 } while(0)
 
-uint8_t _flash_buf[ESP_ROM_SPIFLASH_BUFF_BYTE_READ_NUM];
+static uint32_t _flash_buf[ESP_ROM_SPIFLASH_BUFF_BYTE_READ_NUM / sizeof(uint32_t)];
 
 esp_err_t IRAM_ATTR spi_flash_read(size_t addr, void *buff, size_t size)
 {
@@ -238,8 +243,8 @@ esp_err_t IRAM_ATTR spi_flash_read(size_t addr, void *buff, size_t size)
         critical_enter();
         Cache_Read_Disable(PRO_CPU_NUM);
 
-        result = esp_rom_spiflash_read (word_addr, (uint32_t*)_flash_buf, 4);
-        memcpy(buff, _flash_buf + pos_in_word, len_in_word);
+        result = esp_rom_spiflash_read(word_addr, _flash_buf, 4);
+        memcpy(buff, (uint8_t *)_flash_buf + pos_in_word, len_in_word);
 
         /* enable interrupts and the cache */
         Cache_Read_Enable(PRO_CPU_NUM);
@@ -262,7 +267,7 @@ esp_err_t IRAM_ATTR spi_flash_read(size_t addr, void *buff, size_t size)
         critical_enter();
         Cache_Read_Disable(PRO_CPU_NUM);
 
-        result |= esp_rom_spiflash_read (addr, (uint32_t*)_flash_buf, len_full_words);
+        result |= esp_rom_spiflash_read(addr, _flash_buf, len_full_words);
         memcpy(buff, _flash_buf, len_full_words);
 
         /* enable interrupts and the cache */
@@ -280,7 +285,7 @@ esp_err_t IRAM_ATTR spi_flash_read(size_t addr, void *buff, size_t size)
         critical_enter();
         Cache_Read_Disable(PRO_CPU_NUM);
 
-        result |= esp_rom_spiflash_read (addr, (uint32_t*)_flash_buf, 4);
+        result |= esp_rom_spiflash_read(addr, _flash_buf, 4);
         memcpy(buff, _flash_buf, len);
 
         /* enable interrupts and the cache */
@@ -316,9 +321,9 @@ esp_err_t IRAM_ATTR spi_flash_write(size_t addr, const void *buff, size_t size)
         critical_enter();
         Cache_Read_Disable(PRO_CPU_NUM);
 
-        result |= esp_rom_spiflash_read (word_addr, (uint32_t*)_flash_buf, 4);
-        memcpy(_flash_buf + pos_in_word, buff, len_in_word);
-        result |= esp_rom_spiflash_write (word_addr, (uint32_t*)_flash_buf, 4);
+        result |= esp_rom_spiflash_read(word_addr, _flash_buf, 4);
+        memcpy((uint8_t *)_flash_buf + pos_in_word, buff, len_in_word);
+        result |= esp_rom_spiflash_write(word_addr, _flash_buf, 4);
 
         /* enable interrupts and the cache */
         Cache_Read_Enable(PRO_CPU_NUM);
@@ -342,7 +347,7 @@ esp_err_t IRAM_ATTR spi_flash_write(size_t addr, const void *buff, size_t size)
         Cache_Read_Disable(PRO_CPU_NUM);
 
         memcpy(_flash_buf, buff, len_full_words);
-        result |= esp_rom_spiflash_write (addr, (uint32_t*)_flash_buf, len_full_words);
+        result |= esp_rom_spiflash_write(addr, _flash_buf, len_full_words);
 
         /* enable interrupts and the cache */
         Cache_Read_Enable(PRO_CPU_NUM);
@@ -359,9 +364,9 @@ esp_err_t IRAM_ATTR spi_flash_write(size_t addr, const void *buff, size_t size)
         critical_enter();
         Cache_Read_Disable(PRO_CPU_NUM);
 
-        result |= esp_rom_spiflash_read (addr, (uint32_t*)_flash_buf, 4);
+        result |= esp_rom_spiflash_read(addr, _flash_buf, 4);
         memcpy(_flash_buf, buff, len);
-        result |= esp_rom_spiflash_write (addr, (uint32_t*)_flash_buf, 4);
+        result |= esp_rom_spiflash_write(addr, _flash_buf, 4);
 
         /* enable interrupts and the cache */
         Cache_Read_Enable(PRO_CPU_NUM);
@@ -432,10 +437,12 @@ const esp_partition_t* esp_partition_find_first(esp_partition_type_t type,
                                                 const char* label)
 {
     uint32_t info_addr = ESP_PART_TABLE_ADDR;
-    uint8_t  info_buf[ESP_PART_ENTRY_SIZE];
-    bool     info_read = true;
+    uint8_t WORD_ALIGNED info_buf[ESP_PART_ENTRY_SIZE];
+    bool info_read = true;
 
-    esp_partition_info_t* info = (esp_partition_info_t*)info_buf;
+    /* use intermediate cast to uintptr_t to silence false positive of
+     * -Wcast-align. We used an attribute to align info_buf to word boundary */
+    esp_partition_info_t* info = (esp_partition_info_t*)(uintptr_t)info_buf;
     esp_partition_t* part;
 
     while (info_read && info_addr < ESP_PART_TABLE_ADDR + ESP_PART_TABLE_SIZE) {
@@ -482,7 +489,6 @@ esp_err_t esp_partition_erase_range(const esp_partition_t* part,
     return spi_flash_erase_range(part->address + addr, size);
 }
 
-
 static int _flash_init  (mtd_dev_t *dev)
 {
     DEBUG("%s dev=%p driver=%p\n", __func__, dev, &_flash_driver);
@@ -528,6 +534,16 @@ static int _flash_write (mtd_dev_t *dev, const void *buff, uint32_t addr, uint32
     return (spi_flash_write(_flash_beg + addr, buff, size) == ESP_OK) ? 0 : -EIO;
 }
 
+static int _flash_write_page (mtd_dev_t *dev, const void *buff, uint32_t page,  uint32_t offset,
+                              uint32_t size)
+{
+    uint32_t addr = _flash_beg + page * _flashchip->page_size + offset;
+    uint32_t remaining = _flashchip->page_size - offset;
+    size = MIN(size, remaining);
+
+    return (spi_flash_write(addr, buff, size) == ESP_OK) ? (int) size : -EIO;
+}
+
 static int _flash_erase (mtd_dev_t *dev, uint32_t addr, uint32_t size)
 {
     DEBUG("%s dev=%p addr=%08x size=%u\n", __func__, dev, addr, size);
@@ -550,5 +566,3 @@ static int _flash_power (mtd_dev_t *dev, enum mtd_power_state power)
 
     return -ENOTSUP;
 }
-
-#endif /* MODULE_MTD */

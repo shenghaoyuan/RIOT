@@ -17,6 +17,8 @@
  * @author      Alexandre Abadie <alexandre.abadie@inria.fr>
  */
 
+#include <assert.h>
+
 #include "log.h"
 #include "board.h"
 #include "net/gnrc/netif/lorawan_base.h"
@@ -55,19 +57,19 @@ void auto_init_sx127x(void)
         LOG_DEBUG("[auto_init_netif] initializing sx1276 #%u\n", i);
 #endif
 
-        sx127x_setup(&sx127x_devs[i], &sx127x_params[i]);
+        sx127x_setup(&sx127x_devs[i], &sx127x_params[i], i);
         if (IS_USED(MODULE_GNRC_NETIF_LORAWAN)) {
             /* Currently only one lora device is supported */
             assert(SX127X_NUMOF == 1);
 
             gnrc_netif_lorawan_create(&_netif[i], sx127x_stacks[i],
                                       SX127X_STACKSIZE, SX127X_PRIO,
-                                      "sx127x", (netdev_t *)&sx127x_devs[i]);
+                                      "sx127x", &sx127x_devs[i].netdev);
         }
         else {
             gnrc_netif_raw_create(&_netif[i], sx127x_stacks[i],
                                   SX127X_STACKSIZE, SX127X_PRIO,
-                                  "sx127x", (netdev_t *)&sx127x_devs[i]);
+                                  "sx127x", &sx127x_devs[i].netdev);
         }
     }
 }

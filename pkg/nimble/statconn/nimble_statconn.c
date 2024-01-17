@@ -27,7 +27,12 @@
 
 #include "host/ble_hs.h"
 
-#define ENABLE_DEBUG    (0)
+/* sanity check on the conn interval range to catch configuration errors */
+#if NIMBLE_STATCONN_CONN_ITVL_MIN_MS > NIMBLE_STATCONN_CONN_ITVL_MAX_MS
+#error "nimble_statconn: CONN_ITVL_MIN_MS must be <= CONN_ITVL_MAX_MS"
+#endif
+
+#define ENABLE_DEBUG    0
 #include "debug.h"
 
 #define UNUSED          (0x00)
@@ -51,7 +56,6 @@ static struct ble_gap_conn_params _conn_params;
 static uint32_t _conn_timeout;
 
 static nimble_netif_eventcb_t _eventcb = NULL;
-
 
 static slot_t *_get_addr(const uint8_t *addr)
 {
@@ -82,6 +86,7 @@ static void _activate(uint8_t role)
         ble_addr_t peer;
         peer.type = BLE_ADDR_RANDOM;
         bluetil_addr_swapped_cp(slot->addr, peer.val);
+        /* try to (re)open the connection */
         nimble_netif_connect(&peer, &_conn_params, _conn_timeout);
     }
     else if (slot && (role == ROLE_S)) {
@@ -154,19 +159,19 @@ static int _be(uint8_t role, const uint8_t *addr)
     slot_t *s = _get_addr(addr);
     if (s != NULL) {
         mutex_unlock(&_lock);
-        return NIMBLE_STATCONN_INUSE;
+        return -EALREADY;
     }
     s = _get_state(UNUSED);
     if (s == NULL) {
         mutex_unlock(&_lock);
-        return NIMBLE_STATCONN_NOSLOT;
+        return -ENOMEM;
     }
 
     s->state = (role | PENDING);
     memcpy(s->addr, addr, BLE_ADDR_LEN);
     mutex_unlock(&_lock);
     _activate(role);
-    return NIMBLE_STATCONN_OK;
+    return 0;
 }
 
 void nimble_statconn_init(void)
@@ -185,11 +190,13 @@ void nimble_statconn_init(void)
     /* set connection parameters */
     _conn_params.scan_itvl = BLE_GAP_SCAN_ITVL_MS(NIMBLE_STATCONN_CONN_WIN_MS);
     _conn_params.scan_window = _conn_params.scan_itvl;
-    _conn_params.itvl_min = BLE_GAP_CONN_ITVL_MS(NIMBLE_STATCONN_CONN_ITVL_MS);
-    _conn_params.itvl_max = _conn_params.itvl_min;
     _conn_params.latency = NIMBLE_STATCONN_CONN_LATENCY;
     _conn_params.supervision_timeout = BLE_GAP_SUPERVISION_TIMEOUT_MS(
                                                NIMBLE_STATCONN_CONN_SUPERTO_MS);
+    _conn_params.itvl_min = BLE_GAP_CONN_ITVL_MS(
+                                            NIMBLE_STATCONN_CONN_ITVL_MIN_MS);
+    _conn_params.itvl_max = BLE_GAP_CONN_ITVL_MS(
+                                            NIMBLE_STATCONN_CONN_ITVL_MAX_MS);
     _conn_params.min_ce_len = 0;
     _conn_params.max_ce_len = 0;
     _conn_timeout = NIMBLE_STATCONN_CONN_TIMEOUT_MS;
@@ -219,7 +226,7 @@ int nimble_statconn_rm(const uint8_t *addr)
     slot_t *s = _get_addr(addr);
     if (s == NULL) {
         mutex_unlock(&_lock);
-        return NIMBLE_STATCONN_NOTCONN;
+        return -ENOTCONN;
     }
     uint8_t role = (s->state & ROLE_M) ? ROLE_M : ROLE_S;
 
@@ -235,5 +242,5 @@ int nimble_statconn_rm(const uint8_t *addr)
         _activate(ROLE_S);
     }
 
-    return NIMBLE_STATCONN_OK;
+    return 0;
 }

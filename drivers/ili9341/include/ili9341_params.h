@@ -59,6 +59,10 @@ extern "C" {
 #define ILI9341_PARAM_NUM_LINES    320U
 #endif
 
+#ifndef ILI9341_PARAM_ROTATION
+#define ILI9341_PARAM_ROTATION     ILI9341_ROTATION_HORZ_FLIP
+#endif
+
 #ifndef ILI9341_PARAMS
 #define ILI9341_PARAMS              { .spi = ILI9341_PARAM_SPI, \
                                       .spi_clk = ILI9341_PARAM_SPI_CLK, \
@@ -69,6 +73,7 @@ extern "C" {
                                       .rgb = ILI9341_PARAM_RGB, \
                                       .inverted = ILI9341_PARAM_INVERTED, \
                                       .lines = ILI9341_PARAM_NUM_LINES, \
+                                      .rotation = ILI9341_PARAM_ROTATION, \
                                     }
 #endif
 /**@}*/
@@ -79,6 +84,21 @@ extern "C" {
 static const ili9341_params_t ili9341_params[] =
 {
     ILI9341_PARAMS,
+};
+
+/**
+ * @brief   Default screen identifiers
+ */
+#ifndef ILI9341_PARAM_SCREEN_IDS
+#define ILI9341_PARAM_SCREEN_IDS    0
+#endif
+
+/**
+ * @brief   Configure screen identifiers
+ */
+static const uint8_t ili9341_screen_ids[] =
+{
+    ILI9341_PARAM_SCREEN_IDS,
 };
 
 #ifdef __cplusplus

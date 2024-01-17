@@ -48,22 +48,22 @@ extern "C" {
  *     RTO <- SRTT + max (G, K*RTTVAR)
  *
  * where K is a constant, and G is clock granularity in seconds
- * ( @ref CONFIG_GNRC_TCP_RTO_GRANULARITY).
+ * ( @ref CONFIG_GNRC_TCP_RTO_GRANULARITY_MS).
  * For more information refer to https://tools.ietf.org/html/rfc6298
  * @{
  */
 /**
- * @brief Timeout duration for user calls. Default is 2 minutes.
+ * @brief Timeout duration in milliseconds for user calls. Default is 2 minutes.
  */
-#ifndef CONFIG_GNRC_TCP_CONNECTION_TIMEOUT_DURATION
-#define CONFIG_GNRC_TCP_CONNECTION_TIMEOUT_DURATION (120U * US_PER_SEC)
+#ifndef CONFIG_GNRC_TCP_CONNECTION_TIMEOUT_DURATION_MS
+#define CONFIG_GNRC_TCP_CONNECTION_TIMEOUT_DURATION_MS (120U * MS_PER_SEC)
 #endif
 
 /**
- * @brief Maximum segment lifetime (MSL). Default is 30 seconds.
+ * @brief Maximum segment lifetime (MSL) in milliseconds. Default is 30 seconds.
  */
-#ifndef CONFIG_GNRC_TCP_MSL
-#define CONFIG_GNRC_TCP_MSL (30U * US_PER_SEC)
+#ifndef CONFIG_GNRC_TCP_MSL_MS
+#define CONFIG_GNRC_TCP_MSL_MS (30U * MS_PER_SEC)
 #endif
 
 /**
@@ -109,28 +109,28 @@ extern "C" {
 #endif
 
 /**
- * @brief Lower bound for RTO = 1 sec (see RFC 6298)
+ * @brief Lower bound for RTO in milliseconds. Default is 1 sec (see RFC 6298)
  *
  * @note Retransmission Timeout (RTO) determines how long TCP waits for
  * acknowledgment (ACK) of transmitted segment. If the acknowledgment
  * isn't received within this time it is considered lost.
  */
-#ifndef CONFIG_GNRC_TCP_RTO_LOWER_BOUND
-#define CONFIG_GNRC_TCP_RTO_LOWER_BOUND (1U * US_PER_SEC)
+#ifndef CONFIG_GNRC_TCP_RTO_LOWER_BOUND_MS
+#define CONFIG_GNRC_TCP_RTO_LOWER_BOUND_MS (1U * MS_PER_SEC)
 #endif
 
 /**
- * @brief Upper bound for RTO = 60 sec (see RFC 6298)
+ * @brief Upper bound for RTO in milliseconds. Default is 60 sec (see RFC 6298)
  */
-#ifndef CONFIG_GNRC_TCP_RTO_UPPER_BOUND
-#define CONFIG_GNRC_TCP_RTO_UPPER_BOUND (60U * US_PER_SEC)
+#ifndef CONFIG_GNRC_TCP_RTO_UPPER_BOUND_MS
+#define CONFIG_GNRC_TCP_RTO_UPPER_BOUND_MS (60U * MS_PER_SEC)
 #endif
 
 /**
- * @brief Assumes clock granularity for TCP of 10 ms (see RFC 6298)
+ * @brief Clock granularity for TCP in milliseconds. Default is 10 milliseconds (see RFC 6298)
  */
-#ifndef CONFIG_GNRC_TCP_RTO_GRANULARITY
-#define CONFIG_GNRC_TCP_RTO_GRANULARITY (10U * MS_PER_SEC)
+#ifndef CONFIG_GNRC_TCP_RTO_GRANULARITY_MS
+#define CONFIG_GNRC_TCP_RTO_GRANULARITY_MS (10U)
 #endif
 
 /**
@@ -155,17 +155,17 @@ extern "C" {
 #endif
 
 /**
- * @brief Lower bound for the duration between probes
+ * @brief Lower bound for the duration between probes in milliseconds. Default is 1 seconds
  */
-#ifndef CONFIG_GNRC_TCP_PROBE_LOWER_BOUND
-#define CONFIG_GNRC_TCP_PROBE_LOWER_BOUND (1U * US_PER_SEC)
+#ifndef CONFIG_GNRC_TCP_PROBE_LOWER_BOUND_MS
+#define CONFIG_GNRC_TCP_PROBE_LOWER_BOUND_MS (1U * MS_PER_SEC)
 #endif
 
 /**
- * @brief Upper bound for the duration between probes
+ * @brief Upper bound for the duration between probes in milliseconds. Default is 60 seconds
  */
-#ifndef CONFIG_GNRC_TCP_PROBE_UPPER_BOUND
-#define CONFIG_GNRC_TCP_PROBE_UPPER_BOUND (60U * US_PER_SEC)
+#ifndef CONFIG_GNRC_TCP_PROBE_UPPER_BOUND_MS
+#define CONFIG_GNRC_TCP_PROBE_UPPER_BOUND_MS (60U * MS_PER_SEC)
 #endif
 
 /**
@@ -184,6 +184,26 @@ extern "C" {
  */
 #ifndef CONFIG_GNRC_TCP_EVENTLOOP_MSG_QUEUE_SIZE_EXP
 #define CONFIG_GNRC_TCP_EVENTLOOP_MSG_QUEUE_SIZE_EXP (3U)
+#endif
+
+/**
+ * @brief Enable experimental feature "dynamic msl". Disabled by default.
+ * @experimental This feature is experimental because it deviates from the TCP RFC.
+ * @note This features calculates the MSL based by multiplying the latest
+ *       retransmission timeout value with
+ *       CONFIG_GNRC_TCP_EXPERIMENTAL_DYN_MSL_RTO_MUL. This leads to much
+ *       faster return times on gnrc_tcp_close.
+ */
+#ifndef CONFIG_GNRC_TCP_EXPERIMENTAL_DYN_MSL_EN
+#define CONFIG_GNRC_TCP_EXPERIMENTAL_DYN_MSL_EN 0
+#endif
+
+/**
+ * @brief Set RTO multiplication factor if experimental feature "dynamic msl" is enabled.
+ * @experimental This feature is experimental because it deviates from the TCP RFC.
+ */
+#ifndef CONFIG_GNRC_TCP_EXPERIMENTAL_DYN_MSL_RTO_MUL
+#define CONFIG_GNRC_TCP_EXPERIMENTAL_DYN_MSL_RTO_MUL (4U)
 #endif
 /** @} */
 

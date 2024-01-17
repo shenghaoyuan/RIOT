@@ -36,11 +36,16 @@
 #ifndef NRF802154_H
 #define NRF802154_H
 
-#include "net/netdev/ieee802154.h"
+#include "net/ieee802154/radio.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @brief   Device descriptor for NRF802154 transceiver
+ */
+typedef struct nrf802154 nrf802154_t;
 
 /**
  * @defgroup drivers_nrf52_802154_conf  nrf802154 driver compile configuration
@@ -60,11 +65,6 @@ extern "C" {
 /** @} */
 
 /**
- * @brief   Export the netdev device descriptor
- */
-extern netdev_ieee802154_t nrf802154_dev;
-
-/**
  * @brief   IEEE 802.15.4 radio timer configuration
  *
  *          this radio relies on a dedicated hardware timer to maintain IFS
@@ -72,6 +72,34 @@ extern netdev_ieee802154_t nrf802154_dev;
  */
 #ifndef NRF802154_TIMER
 #define NRF802154_TIMER TIMER_DEV(1)
+#endif
+
+/**
+ * @brief   Setup NRF802154 in order to be used with the IEEE 802.15.4 Radio HAL
+ *
+ * @note    This functions MUST be called before @ref nrf802154_init.
+ *
+ * @param[in] hal  pointer to the HAL descriptor associated to the device.
+ */
+void nrf802154_hal_setup(ieee802154_dev_t *hal);
+
+/**
+ * @brief Initialize the NRF52840 radio.
+ *
+ * @return 0 on success
+ * @return negative errno on error
+ */
+int nrf802154_init(void);
+
+/**
+ * @brief   Setup a NRF802154 radio device
+ *
+ * @param[out] dev          Device descriptor
+ */
+void nrf802154_setup(nrf802154_t *dev);
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* NRF802154_H */

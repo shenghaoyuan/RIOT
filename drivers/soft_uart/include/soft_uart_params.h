@@ -13,7 +13,7 @@
  * @file
  * @brief       Software UART configuration
  *
- * @author      Benjamin Valentin <benjjamin.valentin@ml-pa.com>
+ * @author      Benjamin Valentin <benjamin.valentin@ml-pa.com>
  */
 
 #ifndef SOFT_UART_PARAMS_H
@@ -21,6 +21,7 @@
 
 #include "soft_uart.h"
 #include "macros/units.h"
+#include "kernel_defines.h"
 
 #ifdef __cplusplus
 extern "C" {

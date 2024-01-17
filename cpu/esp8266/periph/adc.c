@@ -19,9 +19,6 @@
  * @}
  */
 
-#define ENABLE_DEBUG    0
-#include "debug.h"
-
 #include "cpu.h"
 #include "mutex.h"
 #include "periph/adc.h"
@@ -30,6 +27,9 @@
 
 #include "esp_common.h"
 #include "sdk/sdk.h"
+
+#define ENABLE_DEBUG 0
+#include "debug.h"
 
 extern uint16_t test_tout(void);
 
@@ -40,7 +40,6 @@ int adc_init(adc_t line)
     /* no special inialization needed */
     return 0;
 }
-
 
 int32_t adc_sample(adc_t line, adc_res_t res)
 {

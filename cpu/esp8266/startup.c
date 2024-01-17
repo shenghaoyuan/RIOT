@@ -16,8 +16,6 @@
  * @author      Gunar Schorcht <gunar@schorcht.net>
  * @}
  */
-#define ENABLE_DEBUG  0
-#include "debug.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -46,6 +44,9 @@
 #include "gdbstub.h"
 #endif
 
+#define ENABLE_DEBUG 0
+#include "debug.h"
+
 /* external esp function declarations */
 extern uint32_t hwrand (void);
 
@@ -55,6 +56,7 @@ void esp_riot_init(void)
     extern uint8_t _rtc_bss_start, _rtc_bss_end;
     esp_reset_reason_t reset_reason = esp_reset_reason();
     if (reset_reason != ESP_RST_DEEPSLEEP && reset_reason != ESP_RST_SW) {
+        /* cppcheck-suppress comparePointers */
         memset(&_rtc_bss_start, 0, (&_rtc_bss_end - &_rtc_bss_start));
     }
 

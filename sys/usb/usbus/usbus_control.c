@@ -28,7 +28,7 @@
 #include <string.h>
 #include <errno.h>
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 static void _init(usbus_t *usbus, usbus_handler_t *handler);
@@ -257,18 +257,24 @@ static void _recv_setup(usbus_t *usbus, usbus_control_handler_t *handler)
 
     DEBUG("usbus_control: Received setup %x %x @ %d\n", pkt->type,
           pkt->request, pkt->length);
-
-    uint8_t destination = pkt->type & USB_SETUP_REQUEST_RECIPIENT_MASK;
     int res = 0;
-    switch (destination) {
-        case USB_SETUP_REQUEST_RECIPIENT_DEVICE:
-            res = _recv_dev_setup(usbus, pkt);
-            break;
-        case USB_SETUP_REQUEST_RECIPIENT_INTERFACE:
-            res = _recv_interface_setup(usbus, pkt);
-            break;
-        default:
-            DEBUG("usbus_control: Unhandled setup request\n");
+
+    /* If write and length is more than expected */
+    if (!(usb_setup_is_read(pkt)) && (handler->received_len > pkt->length)) {
+       res = -1; /* Stall */
+    }
+    else {
+        uint8_t destination = pkt->type & USB_SETUP_REQUEST_RECIPIENT_MASK;
+        switch (destination) {
+            case USB_SETUP_REQUEST_RECIPIENT_DEVICE:
+                res = _recv_dev_setup(usbus, pkt);
+                break;
+            case USB_SETUP_REQUEST_RECIPIENT_INTERFACE:
+                res = _recv_interface_setup(usbus, pkt);
+                break;
+            default:
+                DEBUG("usbus_control: Unhandled setup request\n");
+        }
     }
     if (res < 0) {
         /* Signal stall to indicate unsupported (USB 2.0 spec 9.6.2 */
@@ -286,11 +292,11 @@ static void _recv_setup(usbus_t *usbus, usbus_control_handler_t *handler)
             /* Signal ready for new data in case there is more */
             if (handler->received_len < pkt->length) {
                 handler->control_request_state = USBUS_CONTROL_REQUEST_STATE_OUTDATA;
-                usbdev_ep_ready(handler->out, 1);
+                usbdev_ep_xmit(handler->out, handler->out_buf, CONFIG_USBUS_EP0_SIZE);
             }
             else {
                 handler->control_request_state = USBUS_CONTROL_REQUEST_STATE_INACK;
-                usbdev_ep_ready(handler->in, 0);
+                usbdev_ep_xmit(handler->in, handler->in_buf, 0);
             }
         }
 
@@ -307,7 +313,7 @@ static void _usbus_config_ep0(usbus_control_handler_t *ep0_handler)
                   sizeof(usbopt_enable_t));
     usbdev_ep_set(ep0_handler->out, USBOPT_EP_ENABLE, &enable,
                   sizeof(usbopt_enable_t));
-    usbdev_ep_ready(ep0_handler->out, 0);
+    usbdev_ep_xmit(ep0_handler->out, ep0_handler->out_buf, CONFIG_USBUS_EP0_SIZE);
 }
 
 uint8_t *usbus_control_get_out_data(usbus_t *usbus, size_t *len)
@@ -317,10 +323,9 @@ uint8_t *usbus_control_get_out_data(usbus_t *usbus, size_t *len)
     assert(len);
     assert(handler->control_request_state == USBUS_CONTROL_REQUEST_STATE_OUTDATA);
 
-    usbdev_ep_t *ep_out = handler->out;
-    usbdev_ep_get(ep_out, USBOPT_EP_AVAILABLE,
+    usbdev_ep_get(handler->out, USBOPT_EP_AVAILABLE,
                   len, sizeof(size_t));
-    return ep_out->buf;
+    return handler->out_buf;
 }
 
 static void _init(usbus_t *usbus, usbus_handler_t *handler)
@@ -351,14 +356,14 @@ static int _handle_tr_complete(usbus_t *usbus,
                 }
                 ep0_handler->control_request_state = USBUS_CONTROL_REQUEST_STATE_READY;
                 /* Ready for new control request */
-                usbdev_ep_ready(ep0_handler->out, 0);
+                usbdev_ep_xmit(ep0_handler->out, ep0_handler->out_buf, CONFIG_USBUS_EP0_SIZE);
             }
             break;
         case USBUS_CONTROL_REQUEST_STATE_OUTACK:
             if (ep->dir == USB_EP_DIR_OUT) {
                 ep0_handler->control_request_state = USBUS_CONTROL_REQUEST_STATE_READY;
                 /* Ready for new control request */
-                usbdev_ep_ready(ep0_handler->out, 0);
+                usbdev_ep_xmit(ep0_handler->out, ep0_handler->out_buf, CONFIG_USBUS_EP0_SIZE);
             }
             break;
         case USBUS_CONTROL_REQUEST_STATE_INDATA:
@@ -369,7 +374,7 @@ static int _handle_tr_complete(usbus_t *usbus,
                 }
                 else {
                     /* Ready out ZLP */
-                    usbdev_ep_ready(ep0_handler->out, 0);
+                    usbdev_ep_xmit(ep0_handler->out, ep0_handler->out_buf, CONFIG_USBUS_EP0_SIZE);
                     ep0_handler->control_request_state = USBUS_CONTROL_REQUEST_STATE_OUTACK;
                 }
             }
@@ -389,7 +394,7 @@ static int _handle_tr_complete(usbus_t *usbus,
         case USBUS_CONTROL_REQUEST_STATE_READY:
             if (ep->dir == USB_EP_DIR_OUT) {
                 memset(&ep0_handler->slicer, 0, sizeof(usbus_control_slicer_t));
-                memcpy(&ep0_handler->setup, ep0_handler->out->buf,
+                memcpy(&ep0_handler->setup, ep0_handler->out_buf,
                        sizeof(usb_setup_t));
                 ep0_handler->received_len = 0;
                 ep0_handler->slicer.reqlen = ep0_handler->setup.length;

@@ -82,6 +82,48 @@
  *   CFLAGS += -DCONFIG_GNRC_RPL_WITHOUT_VALIDATION
  *   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  *
+ * - This RPL implementation currently only supports storing mode.
+ *   That means, in order to have downwards routes to all nodes the
+ *   storage space within [@c gnrc_ipv6's Neighbor Information Base](@ref net_gnrc_ipv6_nib)
+ *   must be big enough to store information for each node.
+ *
+ *   For a random topology of n nodes, to ensure you can reach every node from the root,
+ *   set `CONFIG_GNRC_IPV6_NIB_NUMOF` == `CONFIG_GNRC_IPV6_NIB_OFFL_NUMOF` == n.
+ *
+ *   e.g. for n = 50 set
+ *   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.mk}
+ *   CFLAGS += -DCONFIG_GNRC_IPV6_NIB_NUMOF=50
+ *   CFLAGS += -DCONFIG_GNRC_IPV6_NIB_OFFL_NUMOF=50
+ *   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ *
+ * - If you want to allow for alternative parents, increase the number of
+ *   default routers in the NIB.
+ *
+ *   e.g. for one alternative parent, set
+ *   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.mk}
+ *   CFLAGS += -DCONFIG_GNRC_IPV6_NIB_DEFAULT_ROUTER_NUMOF=2
+ *   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ *
+ * TODO
+ * ------
+ *
+ * The GNRC RPL implementation only implements storing mode
+ * with OF0 ([RFC6552](https://tools.ietf.org/html/rfc6552)).
+ * The RPL routing header is parsed by the nodes when the [@c gnrc_rpl_srh](@ref net_gnrc_rpl_srh)
+ * module is used, but anything else
+ * for non-storing mode is missing.
+ * For interoperability with other RPL implementations, open task include:
+ *
+ * - IPv6 Hop-by-hop RPL option
+ *   (see [#7231](https://github.com/RIOT-OS/RIOT/pull/7231#issuecomment-651237343))
+ * - Metric based routing ([RFC6551](https://tools.ietf.org/html/rfc6551)
+ *   and [RFC6719](https://tools.ietf.org/html/rfc6719))
+ *   (see [14448](https://github.com/RIOT-OS/RIOT/pull/14448) and
+ *   [#14623](https://github.com/RIOT-OS/RIOT/pull/14623))
+ * - Non-Storing mode
+ * - DAG-Metric Container ([RFC6550#6.7.4](https://tools.ietf.org/html/rfc6550#section-6.7.4)
+ *   and [RFC6551](https://tools.ietf.org/html/rfc6551))
+ *
  * @{
  *
  * @file
@@ -110,7 +152,6 @@
 #include "net/gnrc/rpl/dodag.h"
 #include "net/gnrc/rpl/of_manager.h"
 #include "net/fib.h"
-#include "xtimer.h"
 #include "trickle.h"
 
 #ifdef MODULE_NETSTATS_RPL
@@ -392,7 +433,6 @@ static inline bool GNRC_RPL_COUNTER_GREATER_THAN(uint8_t A, uint8_t B)
 #define GNRC_RPL_LEAF_NODE (2)
 /** @} */
 
-
 /**
  * @name RPL Control Message Options
  *  @see <a href="https://tools.ietf.org/html/rfc6550#section-6.7">
@@ -542,7 +582,7 @@ kernel_pid_t gnrc_rpl_init(kernel_pid_t if_pid);
  * @return  Pointer to the new RPL Instance, on success.
  * @return  NULL, otherwise.
  */
-gnrc_rpl_instance_t *gnrc_rpl_root_init(uint8_t instance_id, ipv6_addr_t *dodag_id,
+gnrc_rpl_instance_t *gnrc_rpl_root_init(uint8_t instance_id, const ipv6_addr_t *dodag_id,
                                         bool gen_inst_id, bool local_inst_id);
 
 /**
@@ -654,7 +694,7 @@ void gnrc_rpl_long_delay_dao(gnrc_rpl_dodag_t *dodag);
  * @return  Pointer to the new RPL instance, on success.
  * @return  NULL, otherwise.
  */
-gnrc_rpl_instance_t *gnrc_rpl_root_instance_init(uint8_t instance_id, ipv6_addr_t *dodag_id,
+gnrc_rpl_instance_t *gnrc_rpl_root_instance_init(uint8_t instance_id, const ipv6_addr_t *dodag_id,
                                                  uint8_t mop);
 
 /**
@@ -694,6 +734,18 @@ static inline void gnrc_rpl_config_pio(gnrc_rpl_dodag_t *dodag, bool status)
                           (status << GNRC_RPL_REQ_DIO_OPT_PREFIX_INFO_SHIFT);
     }
 }
+
+#if IS_USED(MODULE_GNRC_RPL) || DOXYGEN
+/**
+ * @brief Convenience function to start a RPL root using the default configuration.
+ *
+ * @param[in] netif             Network interface to use as RPL root
+ * @param[in] dodag_id          Id of the DODAG
+ */
+void gnrc_rpl_configure_root(gnrc_netif_t *netif, const ipv6_addr_t *dodag_id);
+#else
+#define gnrc_rpl_configure_root(netif, dodag_id)  ((void)netif)
+#endif
 
 #ifdef __cplusplus
 }

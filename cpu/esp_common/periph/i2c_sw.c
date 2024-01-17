@@ -26,7 +26,7 @@
    described in [wikipedia](https://en.wikipedia.org/wiki/I%C2%B2C#Example_of_bit-banging_the_I%C2%B2C_master_protocol).
 */
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #include <assert.h>
@@ -62,8 +62,17 @@
 #include "esp/gpio_regs.h"
 #include "sdk/ets.h"
 
+/**
+ * @brief Clock stretching counter.
+ *
+ * Set to 0 to disable clock stretching. This will cause SCL to be always driven
+ * instead of open-drain, which allows using GPIO15 (normally pulled down to
+ * boot) to be used as SCL.
+ */
+#ifndef I2C_CLOCK_STRETCH
 /* max clock stretching counter (ca. 10 ms) */
 #define I2C_CLOCK_STRETCH 40000
+#endif /* I2C_CLOCK_STRETCH */
 
 /* following functions have to be declared as extern since it is not possible */
 /* to include user_interface.h due to conflicts with gpio_init */
@@ -96,18 +105,23 @@ static _i2c_bus_t _i2c_bus[I2C_NUMOF] = {};
 #pragma GCC optimize ("O2")
 
 #ifdef MCU_ESP32
-static const uint32_t _i2c_delays[][3] =
+static const uint32_t _i2c_delays[][5] =
 {
     /* values specify one half-period and are only valid for -O2 option     */
     /* value = [period - 0.25 us (240 MHz) / 0.5us(160MHz) / 1.0us(80MHz)]  */
     /*         * cycles per second / 2                                      */
     /* 1 us = 16 cycles (80 MHz) / 32 cycles (160 MHz) / 48 cycles (240)    */
-    /* values for             80,  160,  240 MHz                            */
-    [I2C_SPEED_LOW]       = {790, 1590, 2390}, /*   10 kbps (period 100 us) */
-    [I2C_SPEED_NORMAL]    = { 70,  150,  230}, /*  100 kbps (period 10 us)  */
-    [I2C_SPEED_FAST]      = { 11,   31,   51}, /*  400 kbps (period 2.5 us) */
-    [I2C_SPEED_FAST_PLUS] = {  0,    7,   15}, /*    1 Mbps (period 1 us)   */
-    [I2C_SPEED_HIGH]      = {  0,    0,    0}  /*  3.4 Mbps (period 0.3 us) not working */
+    /* max clock speeds    2 MHz CPU clock:  19 kHz                         */
+    /*                    40 MHz CPU clock: 308 kHz                         */
+    /*                    80 MHz CPU clock: 516 kHz                         */
+    /*                   160 MHz CPU clock: 727 kHz                         */
+    /*                   240 MHz CPU clock: 784 kHz                         */
+    /* values for             80,  160,  240,  2,  40 MHz                   */
+    [I2C_SPEED_LOW]       = {790, 1590, 2390, 10, 390 }, /*  10 kbps (period 100 us) */
+    [I2C_SPEED_NORMAL]    = { 70,  150,  230,  0,  30 }, /* 100 kbps (period 10 us)  */
+    [I2C_SPEED_FAST]      = { 11,   31,   51,  0,   0 }, /* 400 kbps (period 2.5 us) */
+    [I2C_SPEED_FAST_PLUS] = {  0,    0,    0,  0,   0 }, /*   1 Mbps (period 1 us)   */
+    [I2C_SPEED_HIGH]      = {  0,    0,    0,  0,   0 }  /* 3.4 Mbps (period 0.3 us) not working */
 };
 #else /* MCU_ESP32 */
 static const uint32_t _i2c_delays[][2] =
@@ -149,10 +163,8 @@ void i2c_init(i2c_t dev)
     assert(dev < I2C_NUMOF_MAX);
     assert(dev < I2C_NUMOF);
 
-    if (i2c_config[dev].speed == I2C_SPEED_HIGH) {
-        LOG_TAG_INFO("i2c", "I2C_SPEED_HIGH is not supported\n");
-        return;
-    }
+    /* clock speeds up to 1 MHz are supported */
+    assert(i2c_config[dev].speed <= I2C_SPEED_FAST_PLUS);
 
     mutex_init(&_i2c_bus[dev].lock);
 
@@ -170,6 +182,8 @@ void i2c_init(i2c_t dev)
         case 160: _i2c_bus[dev].delay = _i2c_delays[_i2c_bus[dev].speed][1]; break;
 #ifdef MCU_ESP32
         case 240: _i2c_bus[dev].delay = _i2c_delays[_i2c_bus[dev].speed][2]; break;
+        case   2: _i2c_bus[dev].delay = _i2c_delays[_i2c_bus[dev].speed][3]; break;
+        case  40: _i2c_bus[dev].delay = _i2c_delays[_i2c_bus[dev].speed][4]; break;
 #endif
         default : LOG_TAG_INFO("i2c", "I2C software implementation is not "
                                "supported for this CPU frequency: %d MHz\n",
@@ -201,6 +215,16 @@ void i2c_init(i2c_t dev)
         gpio_init(_i2c_bus[dev].sda, GPIO_IN_OD_PU)) {
         return;
     }
+
+    /* clear the bus by sending 10 clock pulses while SDA is LOW */
+    gpio_set(i2c_config[dev].scl);
+    gpio_set(i2c_config[dev].sda);
+    gpio_clear(i2c_config[dev].sda);
+    for (int i = 0; i < 20; i++) {
+        gpio_toggle(i2c_config[dev].scl);
+    }
+    gpio_set(i2c_config[dev].sda);
+
 #else /* MCU_ESP32 */
     /*
      * Due to critical timing required by the I2C software implementation,
@@ -213,8 +237,11 @@ void i2c_init(i2c_t dev)
      * - LOW : The GPIO is temporarily switched to GPIO_OD_PU mode. In this
      *         mode, the output value 0, which is written during
      *         initialization, actively drives the pin to low.
+     *
+     * When I2C_CLOCK_STRETCH is 0 (disabled), SCL is instead an always driven
+     * output GPIO with no pull-up.
      */
-    if (gpio_init(_i2c_bus[dev].scl, GPIO_IN_PU) ||
+    if (gpio_init(_i2c_bus[dev].scl, I2C_CLOCK_STRETCH ? GPIO_IN_PU : GPIO_OUT) ||
         gpio_init(_i2c_bus[dev].sda, GPIO_IN_PU)) {
         return;
     }
@@ -234,12 +261,11 @@ void i2c_init(i2c_t dev)
     return;
 }
 
-int i2c_acquire(i2c_t dev)
+void i2c_acquire(i2c_t dev)
 {
     assert(dev < I2C_NUMOF);
 
     mutex_lock(&_i2c_bus[dev].lock);
-    return 0;
 }
 
 void i2c_release(i2c_t dev)
@@ -435,11 +461,16 @@ static inline void _i2c_scl_high(_i2c_bus_t* bus)
     /* set SCL signal high (pin is in open-drain mode and pulled-up) */
     GPIO_SET(out_w1ts, out1_w1ts, bus->scl);
 #else /* MCU_ESP32 */
+#if I2C_CLOCK_STRETCH > 0
     /*
      * set SCL signal high (switch back to GPIO_IN_PU mode, that is the pin is
      * in open-drain mode and pulled-up to high)
      */
     GPIO.ENABLE_OUT_CLEAR = bus->scl_bit;
+#else /* I2C_CLOCK_STRETCH > 0 */
+    /* No clock stretching supported, always drive the SCL pin. */
+    GPIO.OUT_SET = bus->scl_bit;
+#endif /* I2C_CLOCK_STRETCH > 0 */
 #endif /* MCU_ESP32 */
 }
 
@@ -449,11 +480,16 @@ static inline void _i2c_scl_low(_i2c_bus_t* bus)
     /* set SCL signal low (actively driven to low) */
     GPIO_SET(out_w1tc, out1_w1tc, bus->scl);
 #else /* MCU_ESP32 */
+#if I2C_CLOCK_STRETCH > 0
     /*
      * set SCL signal low (switch temporarily to GPIO_OD_PU where the
      * written output value 0 drives the pin actively to low)
      */
     GPIO.ENABLE_OUT_SET = bus->scl_bit;
+#else /* I2C_CLOCK_STRETCH > 0 */
+    /* No clock stretching supported, always drive the SCL pin. */
+    GPIO.OUT_CLEAR = bus->scl_bit;
+#endif /* I2C_CLOCK_STRETCH > 0 */
 #endif /* MCU_ESP32 */
 }
 
@@ -779,7 +815,6 @@ static IRAM_ATTR int _i2c_write_byte(_i2c_bus_t* bus, uint8_t byte)
 
     return !bit ? 0 : -EIO;
 }
-
 
 static IRAM_ATTR int _i2c_read_byte(_i2c_bus_t* bus, uint8_t *byte, bool ack)
 {

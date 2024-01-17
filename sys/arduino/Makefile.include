@@ -1,6 +1,7 @@
 # Add Arduino sketches to the application as a module
 
 SKETCHES = $(wildcard $(APPDIR)/*.sketch)
+SKETCH_MODULE = arduino_sketches
 
 ifneq (,$(SKETCHES))
   # Define application sketches module, it will be generated into $(BINDIR)
@@ -19,7 +20,5 @@ endif
 # include the Arduino headers
 INCLUDES += -I$(RIOTBASE)/sys/arduino/include
 
-# Arduino provices C++11, which is not enabled by default in Ubuntu's avr-gcc
-# package, which is __horrible__ out of date. However, we cannot simply ignore
-# all Ubuntu users and instead simply manually enable C++11 support
-CXXEXFLAGS += -std=c++11
+PSEUDOMODULES += arduino_pwm
+PSEUDOMODULES += arduino_serial_stdio

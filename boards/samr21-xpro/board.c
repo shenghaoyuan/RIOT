@@ -42,11 +42,11 @@ void board_init(void)
     LED0_OFF;
 
     /* initialize the on-board antenna switch */
-    gpio_init(RFCTL1_PIN, GPIO_OUT);
-    gpio_init(RFCTL2_PIN, GPIO_OUT);
-    /* set default antenna switch configuration */
-    board_antenna_config(RFCTL_ANTENNA_DEFAULT);
+    if (IS_USED(MODULE_AT86RF233)) {
+        gpio_init(RFCTL1_PIN, GPIO_OUT);
+        gpio_init(RFCTL2_PIN, GPIO_OUT);
 
-    /* initialize the CPU */
-    cpu_init();
+        /* set default antenna switch configuration */
+        board_antenna_config(RFCTL_ANTENNA_DEFAULT);
+    }
 }

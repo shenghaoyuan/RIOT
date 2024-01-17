@@ -68,6 +68,23 @@
  * ```
  *
  *
+ * # ztimer best practices
+ *
+ * 1. Don't use ZTIMER_USEC unless the increased resolution is really needed.
+ *    ZTIMER_USEC will, on most platforms, prevent low-power sleep modes.
+ *
+ * 2. Clear ztimer_t structs before use. Example:
+ *
+ *        ztimer_t foo = { 0 };
+ *
+ *    This ensures ztimer knows the timer is not already set, possibly preventing
+ *    an unnecessary full ztimer list traversal.
+ *    (ztimer will ensure that a removed timer is sufficiently cleared.)
+ *
+ * 3. Don't compare ztimer_now() values from different clocks. The clocks are
+ *    almost certainly not synchronized.
+ *
+ *
  * # Design
  *
  * ## clocks, virtual timers, chaining
@@ -122,6 +139,24 @@
  * (now() - B) + T[1]). Thus even though the list is keeping relative offsets,
  * the time keeping is done by keeping track of the absolute times.
  *
+ * Currently, a sorted singly linked list is used for storing the timers.
+ * This choice has some implications:
+ *
+ * - only one pointer needed per timer object (for "next" element)
+ * - simple implementation
+ * - acceptable runtime for expected number of active timers (<50)
+ * - constant get_min() (important for timer triggering)
+ * - O(n) insertion / removal of timer objects
+ *
+ * By making the list doubly-linked, removal of timer objects could be easily
+ * made a constant operation, at the price of another pointer per timer object
+ * (for "previous" element).
+ *
+ * If deemed necessary, the linked list can be exchanged our augmented with
+ * another data structure providing better algorithmic guarantees. It remains
+ * to be shown whether the increased complexity would lead to better
+ * performance for any reasonable amount of active timers.
+ *
  *
  * ## Clock extension
  *
@@ -164,12 +199,25 @@
  *
  * For now, there are:
  *
- * ZTIMER_USEC: clock providing microsecond ticks
+ * ZTIMER_USEC: clock providing microsecond ticks, always uses a basic timer
+ *              (ztimer_periph_timer)
  *
- * ZTIMER_MSEC: clock providing millisecond ticks, using a low power timer if
- *              available on the platform
+ * ZTIMER_MSEC: clock providing millisecond ticks, using a low power timer
+ *              (ztimer_periph_rtt) if it is available on the platform
+ *              and it running at 1kHz or above else it uses the same
+ *              basic timer as ZTIMER_USEC does.
  *
- * ZTIMER_SEC:  clock providing second time, possibly using epoch semantics
+ * ZTIMER_SEC:  clock providing second time, possibly using epoch semantics,
+ *              it will use a low power timer (ztimer_periph_rtt)
+ *              if it is available on the platform alternately it uses
+ *              ztimer_periph_rtc if it is available and configured
+ *              if if these are missing it will use same basic timer
+ *              as ZTIMER_USEC does.
+ *
+ * If `periph_rtt` is required with direct access by another MODULE or
+ * application, `ztimer_no_periph_rtt` can be included to avoid automatic
+ * selection of `ztimer_periph_rtt` as a backend for ZTIMER_SEC and ZTIMER_MSEC.
+ * i.e.: `USEMODULE += ztimer_no_periph_rtt`.
  *
  * These pointers are defined in `ztimer.h` and can be used like this:
  *
@@ -216,8 +264,10 @@
 
 #include <stdint.h>
 
-#include "kernel_types.h"
+#include "sched.h"
 #include "msg.h"
+#include "mutex.h"
+#include "rmutex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -274,16 +324,20 @@ typedef struct {
 typedef struct {
     /**
      * @brief   Set a new timer target
+     * @param   clock       ztimer clock to set the new target
+     * @param   val         Relative target (e.g. fire at value `now() + val`)
      */
     void (*set)(ztimer_clock_t *clock, uint32_t val);
 
     /**
      * @brief   Get the current count of the timer
+     * @param   clock       ztimer clock to get the current time from
      */
     uint32_t (*now)(ztimer_clock_t *clock);
 
     /**
      * @brief   Cancel any set target
+     * @param   clock       ztimer clock to cancel a pending alarm, if any
      */
     void (*cancel)(ztimer_clock_t *clock);
 } ztimer_ops_t;
@@ -295,7 +349,9 @@ struct ztimer_clock {
     ztimer_base_t list;             /**< list of active timers              */
     const ztimer_ops_t *ops;        /**< pointer to methods structure       */
     ztimer_base_t *last;            /**< last timer in queue, for _is_set() */
-    uint32_t adjust;                /**< will be subtracted on every set()  */
+    uint16_t adjust_set;            /**< will be subtracted on every set()  */
+    uint16_t adjust_sleep;          /**< will be subtracted on every sleep(),
+                                         in addition to adjust_set          */
 #if MODULE_ZTIMER_EXTEND || MODULE_ZTIMER_NOW64 || DOXYGEN
     /* values used for checkpointed intervals and 32bit extension */
     uint32_t max_value;             /**< maximum relative timer value       */
@@ -303,12 +359,15 @@ struct ztimer_clock {
     ztimer_now_t checkpoint;        /**< cumulated time at last now() call  */
 #endif
 #if MODULE_PM_LAYERED || DOXYGEN
-    uint8_t required_pm_mode;       /**< min. pm mode required for the clock to run */
+    uint8_t block_pm_mode;          /**< min. pm mode to block for the clock to run */
 #endif
 };
 
 /**
  * @brief   main ztimer callback handler
+ *
+ * This gets called by clock implementations, and must only be called by them
+ * with interrupts disabled.
  */
 void ztimer_handler(ztimer_clock_t *clock);
 
@@ -325,8 +384,22 @@ void ztimer_handler(ztimer_clock_t *clock);
  * @param[in]   clock       ztimer clock to operate on
  * @param[in]   timer       timer entry to set
  * @param[in]   val         timer target (relative ticks from now)
+ *
+ * @return The value of @ref ztimer_now() that @p timer was set against
+ *         (`now() + @p val = absolute trigger time`).
  */
-void ztimer_set(ztimer_clock_t *clock, ztimer_t *timer, uint32_t val);
+uint32_t ztimer_set(ztimer_clock_t *clock, ztimer_t *timer, uint32_t val);
+
+/**
+ * @brief   Check if a timer is currently active
+ *
+ * @param[in]   clock       ztimer clock to operate on
+ * @param[in]   timer       timer to check
+ *
+ * @return  > 0 if timer is active
+ * @return 0 if timer is not active
+ */
+unsigned ztimer_is_set(const ztimer_clock_t *clock, const ztimer_t *timer);
 
 /**
  * @brief   Remove a timer from a clock
@@ -338,8 +411,14 @@ void ztimer_set(ztimer_clock_t *clock, ztimer_t *timer, uint32_t val);
  *
  * @param[in]   clock       ztimer clock to operate on
  * @param[in]   timer       timer entry to remove
+ *
+ * @retval  true    The timer was removed (and thus its callback neither was nor
+ *                  will be called by ztimer).
+ * @retval  false   The timer fired previously or is not set on the @p clock
+ *                  at all.
+ *
  */
-void ztimer_remove(ztimer_clock_t *clock, ztimer_t *timer);
+bool ztimer_remove(ztimer_clock_t *clock, ztimer_t *timer);
 
 /**
  * @brief   Post a message after a delay
@@ -379,7 +458,7 @@ void ztimer_set_msg(ztimer_clock_t *clock, ztimer_t *timer, uint32_t offset,
 int ztimer_msg_receive_timeout(ztimer_clock_t *clock, msg_t *msg,
                                uint32_t timeout);
 
- /* created with dist/tools/define2u16.py */
+/* created with dist/tools/define2u16.py */
 #define MSG_ZTIMER 0xc83e   /**< msg type used by ztimer_msg_receive_timeout */
 
 /**
@@ -394,6 +473,9 @@ ztimer_now_t _ztimer_now_extend(ztimer_clock_t *clock);
 
 /**
  * @brief   Get the current time from a clock
+ *
+ * @warning don't compare ztimer_now() values from different clocks. The
+ *          clocks are almost certainly not synchronized.
  *
  * @param[in]   clock          ztimer clock to operate on
  *
@@ -445,6 +527,23 @@ void ztimer_periodic_wakeup(ztimer_clock_t *clock, uint32_t *last_wakeup,
 void ztimer_sleep(ztimer_clock_t *clock, uint32_t duration);
 
 /**
+ * @brief   Busy-wait specified duration
+ *
+ * @note: This blocks lower priority threads. Use only for *very* short delays.
+ *
+ * @param[in]   clock           ztimer clock to use
+ * @param[in]   duration        duration to spin, in @p clock time units
+ */
+static inline void ztimer_spin(ztimer_clock_t *clock, uint32_t duration)
+{
+    uint32_t end = ztimer_now(clock) + duration;
+
+    /* Rely on integer overflow. `end - now` will be smaller than `duration`,
+     * counting down, until it underflows to UINT32_MAX. Loop ends then. */
+    while ((end - ztimer_now(clock)) <= duration) {}
+}
+
+/**
  * @brief Set a timer that wakes up a thread
  *
  * This function sets a timer that will wake up a thread when the timer has
@@ -472,19 +571,37 @@ void ztimer_set_timeout_flag(ztimer_clock_t *clock, ztimer_t *timer,
                              uint32_t timeout);
 
 /**
- * @brief   Update ztimer clock head list offset
+ * @brief   Try to lock the given mutex, but give up after @p timeout
  *
- * @internal
+ * @param[in]       clock       ztimer clock to operate on
+ * @param[in,out]   mutex       Mutex object to lock
+ * @param[in]       timeout     timeout after which to give up
  *
- * @param[in]   clock  ztimer clock to work on
+ * @retval  0               Success, caller has the mutex
+ * @retval  -ECANCELED      Failed to obtain mutex within @p timeout
  */
-void ztimer_update_head_offset(ztimer_clock_t *clock);
+int ztimer_mutex_lock_timeout(ztimer_clock_t *clock, mutex_t *mutex,
+                              uint32_t timeout);
+
+/**
+ * @brief   Try to lock the given rmutex, but give up after @p timeout
+ *
+ * @param[in]       clock       ztimer clock to operate on
+ * @param[in,out]   rmutex      rmutex object to lock
+ * @param[in]       timeout     timeout after which to give up
+ *
+ * @retval  0               Success, caller has the rmutex
+ * @retval  -ECANCELED      Failed to obtain rmutex within @p timeout
+ */
+int ztimer_rmutex_lock_timeout(ztimer_clock_t *clock, rmutex_t *rmutex,
+                               uint32_t timeout);
 
 /**
  * @brief   Initialize the board-specific default ztimer configuration
  */
 void ztimer_init(void);
 
+#if defined(MODULE_ZTIMER_EXTEND) || defined(DOXYGEN)
 /**
  * @brief   Initialize possible ztimer extension intermediate timer
  *
@@ -501,6 +618,7 @@ static inline void ztimer_init_extend(ztimer_clock_t *clock)
         clock->ops->set(clock, clock->max_value >> 1);
     }
 }
+#endif /* MODULE_ZTIMER_EXTEND */
 
 /* default ztimer virtual devices */
 /**
@@ -512,6 +630,11 @@ extern ztimer_clock_t *const ZTIMER_USEC;
  * @brief   Default ztimer millisecond clock
  */
 extern ztimer_clock_t *const ZTIMER_MSEC;
+
+/**
+ * @brief   Default ztimer second clock
+ */
+extern ztimer_clock_t *const ZTIMER_SEC;
 
 /**
  * @brief   Base ztimer for the microsecond clock (ZTIMER_USEC)

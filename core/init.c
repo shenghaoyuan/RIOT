@@ -19,21 +19,23 @@
  * @}
  */
 
-#include <stdint.h>
-#include <stdbool.h>
 #include <errno.h>
-#include "kernel_init.h"
-#include "thread.h"
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "auto_init.h"
 #include "irq.h"
+#include "kernel_init.h"
 #include "log.h"
-
 #include "periph/pm.h"
+#include "thread.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
-#ifdef MODULE_AUTO_INIT
-#include <auto_init.h>
+#ifndef CONFIG_BOOT_MSG_STRING
+#define CONFIG_BOOT_MSG_STRING "main(): This is RIOT! (Version: " \
+    RIOT_VERSION ")"
 #endif
 
 extern int main(void);
@@ -42,11 +44,13 @@ static void *main_trampoline(void *arg)
 {
     (void)arg;
 
-#ifdef MODULE_AUTO_INIT
-    auto_init();
-#endif
+    if (IS_USED(MODULE_AUTO_INIT)) {
+        auto_init();
+    }
 
-    LOG_INFO("main(): This is RIOT! (Version: " RIOT_VERSION ")\n");
+    if (!IS_ACTIVE(CONFIG_SKIP_BOOT_MSG)) {
+        LOG_INFO(CONFIG_BOOT_MSG_STRING "\n");
+    }
 
     main();
 
@@ -66,7 +70,6 @@ static void *idle_thread(void *arg)
 
     return NULL;
 }
-
 
 void kernel_init(void)
 {

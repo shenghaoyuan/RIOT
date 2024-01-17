@@ -18,7 +18,7 @@
  * @}
  */
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #include "esp_attr.h"
@@ -26,7 +26,6 @@
 #include "gpio_arch.h"
 #include "rtt_arch.h"
 #include "syscalls.h"
-#include "xtimer.h"
 
 #include "periph/rtc.h"
 #include "rom/rtc.h"
@@ -133,6 +132,7 @@ void pm_set(unsigned mode)
      * slow RTC memory is automatically activated when the .rtc.data section
      * is used to retain initialized data.
      */
+    /* cppcheck-suppress comparePointers */
     if (&_rtc_bss_rtc_end > &_rtc_bss_rtc_start) {
         esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_SLOW_MEM, ESP_PD_OPTION_ON);
     }

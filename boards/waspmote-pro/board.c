@@ -24,7 +24,6 @@
 
 #include "board.h"
 #include "cpu.h"
-#include "irq.h"
 
 /**
  * @brief Initialize the boards on-board LEDs (green and red)
@@ -59,7 +58,5 @@ void board_init(void)
 #endif
 #endif
 
-    cpu_init();
     led_init();
-    irq_enable();
 }

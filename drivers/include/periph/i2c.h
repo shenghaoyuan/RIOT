@@ -126,12 +126,6 @@ extern "C" {
 #endif
 
 /**
- * @todo    Remove dev_enums.h include once all platforms are ported to the
- *          updated periph interface
- */
-#include "periph/dev_enums.h"
-
-/**
  * @brief   Default I2C device access macro
  * @{
  */
@@ -145,7 +139,7 @@ extern "C" {
  * @{
  */
 #ifndef I2C_UNDEF
-#define I2C_UNDEF           (UINT_MAX)
+#define I2C_UNDEF           (UINT_FAST8_MAX)
 #endif
 /** @} */
 
@@ -154,7 +148,7 @@ extern "C" {
  * @{
  */
 #ifndef HAVE_I2C_T
-typedef unsigned int i2c_t;
+typedef uint_fast8_t i2c_t;
 #endif
 /**  @} */
 
@@ -282,11 +276,12 @@ gpio_t i2c_pin_scl(i2c_t dev);
  * In case the I2C device is busy, this function will block until the bus is
  * free again.
  *
- * @param[in] dev           I2C device to access
+ * @pre     Given device is valid, otherwise an assertion blows up
+ *          (if assertions are enabled).
  *
- * @return                  0 on success, -1 on error
+ * @param[in] dev           I2C device to access
  */
-int i2c_acquire(i2c_t dev);
+void i2c_acquire(i2c_t dev);
 
 /**
  * @brief   Release the given I2C device to be used by others
@@ -496,7 +491,6 @@ int i2c_write_reg(i2c_t dev, uint16_t addr, uint16_t reg,
  */
 int i2c_write_regs(i2c_t dev, uint16_t addr, uint16_t reg,
                   const void *data, size_t len, uint8_t flags);
-
 
 #ifdef __cplusplus
 }

@@ -27,13 +27,11 @@
 #include "ws281x_params.h"
 #include "ws281x_constants.h"
 #include "periph_cpu.h"
-#include "xtimer.h"
 #include "xtensa/core-macros.h"
 #include "soc/rtc.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
-
 
 static inline __attribute__((always_inline)) uint32_t get_cycle_count(void) {
     uint32_t ccount;

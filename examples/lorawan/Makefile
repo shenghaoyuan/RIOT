@@ -11,6 +11,11 @@ DEVEUI ?= 0000000000000000
 APPEUI ?= 0000000000000000
 APPKEY ?= 00000000000000000000000000000000
 
+# Pass these enviroment variables to docker
+DOCKER_ENV_VARS += DEVEUI
+DOCKER_ENV_VARS += APPEUI
+DOCKER_ENV_VARS += APPKEY
+
 # Default radio driver is Semtech SX1276 (used by the B-L072Z-LRWAN1 board)
 DRIVER ?= sx1276
 
@@ -22,9 +27,7 @@ USEPKG += semtech-loramac
 
 USEMODULE += $(DRIVER)
 USEMODULE += fmt
-FEATURES_REQUIRED += periph_rtc
-
-CFLAGS += -DDEVEUI=\"$(DEVEUI)\" -DAPPEUI=\"$(APPEUI)\" -DAPPKEY=\"$(APPKEY)\"
+FEATURES_OPTIONAL += periph_rtc
 
 # Comment this out to disable code in RIOT that does safety checking
 # which is not needed in a production environment but helps in the
@@ -46,7 +49,11 @@ ifneq (,$(filter test,$(MAKECMDGOALS)))
   DEFAULT_MODULE += test_utils_interactive_sync
 endif
 
-# Can't be run on ci since it requires gateway + lora node
-TEST_ON_CI_BLACKLIST = all
-
 include $(RIOTBASE)/Makefile.include
+
+ifndef CONFIG_KCONFIG_USEMODULE_LORAWAN
+  # OTAA compile time configuration keys
+  CFLAGS += -DCONFIG_LORAMAC_APP_KEY_DEFAULT=\"$(APPKEY)\"
+  CFLAGS += -DCONFIG_LORAMAC_APP_EUI_DEFAULT=\"$(APPEUI)\"
+  CFLAGS += -DCONFIG_LORAMAC_DEV_EUI_DEFAULT=\"$(DEVEUI)\"
+endif

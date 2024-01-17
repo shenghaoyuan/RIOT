@@ -19,19 +19,22 @@
  * @}
  */
 
-#define ENABLE_DEBUG (0)
-#include "debug.h"
+#include <assert.h>
+#include <string.h>
+
 #include "esp_common.h"
 #include "log.h"
-
-#include <string.h>
 
 #include "cpu.h"
 #include "mutex.h"
 #include "periph/spi.h"
+#include "macros/units.h"
 
 #include "esp_attr.h"
 #include "gpio_arch.h"
+
+#define ENABLE_DEBUG 0
+#include "debug.h"
 
 #ifdef MCU_ESP32
 
@@ -41,6 +44,7 @@
 #include "soc/gpio_sig_map.h"
 #include "soc/gpio_struct.h"
 #include "soc/io_mux_reg.h"
+#include "soc/rtc.h"
 #include "soc/spi_reg.h"
 #include "soc/spi_struct.h"
 
@@ -287,7 +291,7 @@ int spi_init_cs(spi_t bus, spi_cs_t cs)
     return SPI_OK;
 }
 
-int IRAM_ATTR spi_acquire(spi_t bus, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk)
+void IRAM_ATTR spi_acquire(spi_t bus, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk)
 {
     DEBUG("%s bus=%u cs=%u mode=%u clk=%u\n", __func__, bus, cs, mode, clk);
 
@@ -306,7 +310,7 @@ int IRAM_ATTR spi_acquire(spi_t bus, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk
         LOG_TAG_ERROR("spi",
                       "SPI_DEV(%d) CS signal could not be initialized\n",
                       bus);
-        return SPI_NOCS;
+        assert(0);
     }
 
     /* lock the bus */
@@ -331,6 +335,23 @@ int IRAM_ATTR spi_acquire(spi_t bus, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk
     uint32_t spi_clkdiv_pre;
     uint32_t spi_clkcnt_N;
 
+#ifdef MCU_ESP32
+    uint32_t apb_clk = rtc_clk_apb_freq_get();
+    spi_clkcnt_N = 2;
+    switch (clk) {
+        case SPI_CLK_10MHZ:  spi_clkdiv_pre = apb_clk / MHZ(10) / 2;
+                             break;
+        case SPI_CLK_5MHZ:   spi_clkdiv_pre = apb_clk / MHZ(5) / 2;
+                             break;
+        case SPI_CLK_1MHZ:   spi_clkdiv_pre = apb_clk / MHZ(1) / 2;
+                             break;
+        case SPI_CLK_400KHZ: spi_clkdiv_pre = apb_clk / KHZ(400) / 2;
+                             break;
+        case SPI_CLK_100KHZ: /* fallthrough intentionally */
+        default: spi_clkdiv_pre = apb_clk / KHZ(100) / 2;
+    }
+    assert(spi_clkdiv_pre > 0);
+#else
     switch (clk) {
         case SPI_CLK_10MHZ:  spi_clkdiv_pre = 2;    /* predivides 80 MHz to 40 MHz */
                              spi_clkcnt_N = 4;      /* 4 cycles results into 10 MHz */
@@ -350,6 +371,7 @@ int IRAM_ATTR spi_acquire(spi_t bus, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk
         default: spi_clkdiv_pre = 20;   /* predivides 80 MHz to 4 MHz */
                  spi_clkcnt_N = 40;     /* 20 cycles results into 100 kHz */
     }
+#endif
 
     /* register values are set to deviders-1 */
     spi_clkdiv_pre--;
@@ -373,8 +395,6 @@ int IRAM_ATTR spi_acquire(spi_t bus, spi_cs_t cs, spi_mode_t mode, spi_clk_t clk
 
     DEBUG("%s bus %d: SPI_CLOCK_REG=%08x\n",
           __func__, bus, _spi[bus].regs->clock.val);
-
-    return SPI_OK;
 }
 
 void IRAM_ATTR spi_release(spi_t bus)
@@ -486,15 +506,15 @@ void IRAM_ATTR spi_transfer_bytes(spi_t bus, spi_cs_t cs, bool cont,
         return;
     }
 
-    #if ENABLE_DEBUG
-    if (out) {
-        DEBUG("out = ");
-        for (size_t i = 0; i < len; i++) {
-            DEBUG("%02x ", ((const uint8_t *)out)[i]);
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        if (out) {
+            DEBUG("out = ");
+            for (size_t i = 0; i < len; i++) {
+                DEBUG("%02x ", ((const uint8_t *)out)[i]);
+            }
+            DEBUG("\n");
         }
-        DEBUG("\n");
     }
-    #endif
 
     if (cs != SPI_CS_UNDEF) {
         gpio_clear(cs);
@@ -522,13 +542,13 @@ void IRAM_ATTR spi_transfer_bytes(spi_t bus, spi_cs_t cs, bool cont,
         gpio_set (cs);
     }
 
-    #if ENABLE_DEBUG
-    if (in) {
-        DEBUG("in = ");
-        for (size_t i = 0; i < len; i++) {
-            DEBUG("%02x ", ((const uint8_t *)in)[i]);
+    if (IS_ACTIVE(ENABLE_DEBUG)) {
+        if (in) {
+            DEBUG("in = ");
+            for (size_t i = 0; i < len; i++) {
+                DEBUG("%02x ", ((const uint8_t *)in)[i]);
+            }
+            DEBUG("\n");
         }
-        DEBUG("\n");
     }
-    #endif
 }

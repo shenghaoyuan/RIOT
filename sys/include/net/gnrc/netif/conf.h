@@ -22,6 +22,7 @@
 
 #include <kernel_defines.h>
 
+#include "net/dhcpv6/client.h"
 #include "net/ieee802154.h"
 #include "net/ethernet/hdr.h"
 #include "net/gnrc/ipv6/nib/conf.h"
@@ -29,18 +30,6 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-/**
- * @brief   Single interface optimizations
- *
- *          Define to 1 to allow GNRC optimizations when only one interface
- *          is available.
- *
- * @note    This MUST NOT be enabled if there's more than one interface.
- */
-#if DOXYGEN
-#define GNRC_NETIF_SINGLE
 #endif
 
 /**
@@ -64,6 +53,30 @@ extern "C" {
  */
 #ifndef CONFIG_GNRC_NETIF_MSG_QUEUE_SIZE_EXP
 #define CONFIG_GNRC_NETIF_MSG_QUEUE_SIZE_EXP  (4U)
+#endif
+
+/**
+ * @brief       Packet queue pool size for all network interfaces
+ *
+ * @note        With @ref net_gnrc_sixlowpan_frag the queue should fit at least
+ *              all fragments of the minimum MTU.
+ * @see         net_gnrc_netif_pktq
+ */
+#ifndef CONFIG_GNRC_NETIF_PKTQ_POOL_SIZE
+#define CONFIG_GNRC_NETIF_PKTQ_POOL_SIZE      (16U)
+#endif
+
+/**
+ * @brief       Time in microseconds for when to try send a queued packet at the
+ *              latest
+ *
+ * Set to -1 to deactivate dequeing by timer. For this it has to be ensured that
+ * none of the notifications by the driver are missed!
+ *
+ * @see         net_gnrc_netif_pktq
+ */
+#ifndef CONFIG_GNRC_NETIF_PKTQ_TIMER_US
+#define CONFIG_GNRC_NETIF_PKTQ_TIMER_US       (5000U)
 #endif
 
 /**
@@ -96,10 +109,12 @@ extern "C" {
  *          @ref GNRC_NETIF_IPV6_GROUPS_NUMOF is also large enough to fit the
  *          addresses' solicited nodes multicast addresses.
  *
- * Default: 2 (1 link-local + 1 global address)
+ * Default: 2 (1 link-local + 1 global address) + any additional address via
+ * configuration protocol (e.g. DHCPv6 leases).
  */
 #ifndef CONFIG_GNRC_NETIF_IPV6_ADDRS_NUMOF
-#define CONFIG_GNRC_NETIF_IPV6_ADDRS_NUMOF    (2)
+#define CONFIG_GNRC_NETIF_IPV6_ADDRS_NUMOF    (2 + \
+                                               DHCPV6_CLIENT_ADDRS_NUMOF)
 #endif
 
 /**
@@ -131,10 +146,12 @@ extern "C" {
  *       address types are included
  */
 #ifndef GNRC_NETIF_L2ADDR_MAXLEN
-#if defined(MODULE_NETDEV_IEEE802154) || defined(MODULE_XBEE)
+#if defined(MODULE_NETDEV_IEEE802154) || defined(MODULE_XBEE) || defined(MODULE_SLIPDEV_L2ADDR)
 #define GNRC_NETIF_L2ADDR_MAXLEN   (IEEE802154_LONG_ADDRESS_LEN)
 #elif   MODULE_NETDEV_ETH
 #define GNRC_NETIF_L2ADDR_MAXLEN   (ETHERNET_ADDR_LEN)
+#elif   MODULE_NRF24L01P
+#define GNRC_NETIF_L2ADDR_MAXLEN   (5U)
 #elif   MODULE_CC110X
 #define GNRC_NETIF_L2ADDR_MAXLEN   (1U)
 #else
@@ -170,8 +187,8 @@ extern "C" {
  *
  * @experimental
  *
- * This feature is non compliant with RFC 4944 and might not be supported by
- * other implementations.
+ * This feature is non compliant with RFC 4944 and RFC 7668 and might not be
+ * supported by other implementations.
  */
 #ifndef CONFIG_GNRC_NETIF_NONSTANDARD_6LO_MTU
 #define CONFIG_GNRC_NETIF_NONSTANDARD_6LO_MTU 0

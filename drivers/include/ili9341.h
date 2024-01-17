@@ -23,12 +23,11 @@
  * implemented here operates over SPI to communicate with the device.
  *
  * The device requires colors to be send in big endian RGB-565 format. The
- * @ref ILI9341_LE_MODE compile time option can switch this, but only use this
+ * @ref CONFIG_ILI9341_LE_MODE compile time option can switch this, but only use this
  * when strictly necessary. This option will slow down the driver as it
  * certainly can't use DMA anymore, every short has to be converted before
  * transfer.
  */
-
 
 #ifndef ILI9341_H
 #define ILI9341_H
@@ -52,28 +51,35 @@ extern "C" {
 /**
  * @brief ILI9341 gvdd level.
  *
- * Default GVDD voltage of 4.8V
+ * Default GVDD voltage of 4.8V. GVDD is reference level for the VCOM level and
+ * the grayscale voltage level. GVDD should be ≦ (AVDD - 0.5) V .
  */
-#ifndef ILI9341_GVDD
-#define ILI9341_GVDD    4800
+#ifndef CONFIG_ILI9341_GVDD
+#define CONFIG_ILI9341_GVDD             4800
 #endif
 
 /**
  * @brief ILI9341 VCOMH voltage level.
  *
- * Default VCOMH voltage of 4.25V
+ * Default VCOMH voltage of 4.25V. VCOMH represents the high level of VCOM AC
+ * voltage. VCOM levels needs to be adjusted to match the capacitance and
+ * performance specifications of the TFT panel to maximize contrast and minimize
+ * flickering.
  */
-#ifndef ILI9341_VCOMH
-#define ILI9341_VCOMH   4250
+#ifndef CONFIG_ILI9341_VCOMH
+#define CONFIG_ILI9341_VCOMH            4250
 #endif
 
 /**
  * @brief ILI9341 VCOML voltage level.
  *
- * Default VCOMH voltage of -2V
+ * Default VCOML voltage of -2V. VCOML represents the low level of VCOM AC
+ * voltage. VCOM levels needs to be adjusted to match the capacitance and
+ * performance specifications of the TFT panel to maximize contrast and minimize
+ * flickering
  */
-#ifndef ILI9341_VCOML
-#define ILI9341_VCOML   -2000
+#ifndef CONFIG_ILI9341_VCOML
+#define CONFIG_ILI9341_VCOML            -2000
 #endif
 
 /**
@@ -82,25 +88,60 @@ extern "C" {
  * Compile time switch to change the driver to convert little endian
  * colors to big endian.
  */
-#ifndef ILI9341_LE_MODE
-#define ILI9341_LE_MODE     (0)
+#ifdef DOXYGEN
+#define CONFIG_ILI9341_LE_MODE
 #endif
 /** @} */
+
+/**
+ * @name Memory access control bits
+ * @{
+ */
+#define ILI9341_MADCTL_MY           0x80    /**< Row address order */
+#define ILI9341_MADCTL_MX           0x40    /**< Column access order */
+#define ILI9341_MADCTL_MV           0x20    /**< Row column exchange */
+#define ILI9341_MADCTL_ML           0x10    /**< Vertical refresh order */
+#define ILI9341_MADCTL_BGR          0x08    /**< Color selector switch control */
+#define ILI9341_MADCTL_MH           0x04    /**< Horizontal refresh direction */
+/** @} */
+
+/**
+ * @name Display rotation modes
+ * @{
+ */
+#define ILI9341_MADCTL_VERT         ILI9341_MADCTL_MX       /**< Vertical mode */
+#define ILI9341_MADCTL_VERT_FLIP    ILI9341_MADCTL_MY       /**< Flipped vertical */
+#define ILI9341_MADCTL_HORZ         ILI9341_MADCTL_MV       /**< Horizontal mode */
+#define ILI9341_MADCTL_HORZ_FLIP    ILI9341_MADCTL_MV | \
+                                    ILI9341_MADCTL_MY | \
+                                    ILI9341_MADCTL_MX       /**< Horizontal flipped */
+/** @} */
+
+/**
+ * @brief   Display rotation mode
+ */
+typedef enum {
+    ILI9341_ROTATION_VERT       = ILI9341_MADCTL_VERT,      /**< Vertical mode */
+    ILI9341_ROTATION_VERT_FLIP  = ILI9341_MADCTL_VERT_FLIP, /**< Vertical flipped mode */
+    ILI9341_ROTATION_HORZ       = ILI9341_MADCTL_HORZ,      /**< Horizontal mode */
+    ILI9341_ROTATION_HORZ_FLIP  = ILI9341_MADCTL_HORZ_FLIP, /**< Horizontal flipped mode */
+} ili9341_rotation_t;
 
 /**
  * @brief   Device initialization parameters
  */
 typedef struct {
-    spi_t spi;          /**< SPI device that the display is connected to */
-    spi_clk_t spi_clk;  /**< SPI clock speed to use */
-    spi_mode_t spi_mode;/**< SPI mode */
-    gpio_t cs_pin;      /**< pin connected to the CHIP SELECT line */
-    gpio_t dcx_pin;     /**< pin connected to the DC line */
-    gpio_t rst_pin;     /**< pin connected to the reset line */
-    bool rgb;           /**< True when display is connected in RGB mode
-                          *  False when display is connected in BGR mode */
-    bool inverted;      /**< Display works in inverted color mode */
-    uint16_t lines;     /**< Number of lines, from 16 to 320 in 8 line steps */
+    spi_t spi;                      /**< SPI device that the display is connected to */
+    spi_clk_t spi_clk;              /**< SPI clock speed to use */
+    spi_mode_t spi_mode;            /**< SPI mode */
+    gpio_t cs_pin;                  /**< pin connected to the CHIP SELECT line */
+    gpio_t dcx_pin;                 /**< pin connected to the DC line */
+    gpio_t rst_pin;                 /**< pin connected to the reset line */
+    bool rgb;                       /**< True when display is connected in RGB mode
+                                      *  False when display is connected in BGR mode */
+    bool inverted;                  /**< Display works in inverted color mode */
+    uint16_t lines;                 /**< Number of lines, from 16 to 320 in 8 line steps */
+    ili9341_rotation_t rotation;    /**< Display rotation mode */
 } ili9341_params_t;
 
 /**
@@ -112,7 +153,6 @@ typedef struct {
 #endif
     const ili9341_params_t *params;     /**< Device initialization parameters */
 } ili9341_t;
-
 
 /**
  * @brief   Setup an ili9341 display device

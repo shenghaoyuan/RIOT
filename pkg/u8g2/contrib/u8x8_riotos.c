@@ -24,7 +24,7 @@
 
 #include "u8x8_riotos.h"
 
-#include "xtimer.h"
+#include "ztimer.h"
 
 #ifdef MODULE_PERIPH_SPI
 #include "periph/spi.h"
@@ -70,15 +70,15 @@ static void _enable_pins(const u8x8_riotos_t *u8x8_riot_ptr)
         return;
     }
 
-    if (u8x8_riot_ptr->pin_cs != GPIO_UNDEF) {
+    if (gpio_is_valid(u8x8_riot_ptr->pin_cs)) {
         gpio_init(u8x8_riot_ptr->pin_cs, GPIO_OUT);
     }
 
-    if (u8x8_riot_ptr->pin_dc != GPIO_UNDEF) {
+    if (gpio_is_valid(u8x8_riot_ptr->pin_dc)) {
         gpio_init(u8x8_riot_ptr->pin_dc, GPIO_OUT);
     }
 
-    if (u8x8_riot_ptr->pin_reset != GPIO_UNDEF) {
+    if (gpio_is_valid(u8x8_riot_ptr->pin_reset)) {
         gpio_init(u8x8_riot_ptr->pin_reset, GPIO_OUT);
     }
 }
@@ -97,26 +97,27 @@ uint8_t u8x8_gpio_and_delay_riotos(u8x8_t *u8g2, uint8_t msg, uint8_t arg_int, v
             _enable_pins(u8x8_riot_ptr);
             break;
         case U8X8_MSG_DELAY_MILLI:
-            xtimer_usleep(arg_int * 1000);
+            ztimer_sleep(ZTIMER_USEC, arg_int * 1000);
             break;
         case U8X8_MSG_DELAY_10MICRO:
-            xtimer_usleep(arg_int * 10);
+            ztimer_sleep(ZTIMER_USEC, arg_int * 10);
             break;
         case U8X8_MSG_DELAY_100NANO:
-            xtimer_nanosleep(arg_int * 100);
+             /* not used in upstream so approximating to 1us should be fine */
+            ztimer_sleep(ZTIMER_USEC, 1);
             break;
         case U8X8_MSG_GPIO_CS:
-            if (u8x8_riot_ptr != NULL && u8x8_riot_ptr->pin_cs != GPIO_UNDEF) {
+            if (u8x8_riot_ptr != NULL && gpio_is_valid(u8x8_riot_ptr->pin_cs)) {
                 gpio_write(u8x8_riot_ptr->pin_cs, arg_int);
             }
             break;
         case U8X8_MSG_GPIO_DC:
-            if (u8x8_riot_ptr != NULL && u8x8_riot_ptr->pin_dc != GPIO_UNDEF) {
+            if (u8x8_riot_ptr != NULL && gpio_is_valid(u8x8_riot_ptr->pin_dc)) {
                 gpio_write(u8x8_riot_ptr->pin_dc, arg_int);
             }
             break;
         case U8X8_MSG_GPIO_RESET:
-            if (u8x8_riot_ptr != NULL &&  u8x8_riot_ptr->pin_reset != GPIO_UNDEF) {
+            if (u8x8_riot_ptr != NULL && gpio_is_valid(u8x8_riot_ptr->pin_reset)) {
                 gpio_write(u8x8_riot_ptr->pin_reset, arg_int);
             }
             break;

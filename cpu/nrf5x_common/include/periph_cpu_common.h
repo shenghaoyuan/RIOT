@@ -26,6 +26,12 @@ extern "C" {
 #endif
 
 /**
+ * @brief   Compatibility wrapper for nRF9160
+ */
+#ifdef NRF_FICR_S
+#define NRF_FICR NRF_FICR_S
+#endif
+/**
  * @name    Power management configuration
  * @{
  */
@@ -35,7 +41,11 @@ extern "C" {
 /**
  * @brief   Starting offset of CPU_ID
  */
+#ifdef FICR_INFO_DEVICEID_DEVICEID_Msk
+#define CPUID_ADDR          (&NRF_FICR->INFO.DEVICEID[0])
+#else
 #define CPUID_ADDR          (&NRF_FICR->DEVICEID[0])
+#endif
 /**
  * @brief   Length of the CPU_ID in octets
  */
@@ -46,7 +56,7 @@ extern "C" {
  *
  * The port definition is used (and zeroed) to suppress compiler warnings
  */
-#ifdef CPU_MODEL_NRF52840XXAA
+#if GPIO_COUNT > 1
 #define GPIO_PIN(x,y)       ((x << 5) | y)
 #else
 #define GPIO_PIN(x,y)       ((x & 0) | y)
@@ -55,6 +65,8 @@ extern "C" {
 /**
  * @brief   Override GPIO_UNDEF value
  */
+/* The precise value matters where GPIO_UNDEF is set in registers like
+ * PWM.PSEL.OUT where it is used in sign-extended form to get a UINT32_MAX */
 #define GPIO_UNDEF          (UINT8_MAX)
 
 /**
@@ -141,6 +153,7 @@ typedef struct {
  * @brief   Override SPI mode values
  * @{
  */
+#ifndef CPU_FAM_NRF9160
 #define HAVE_SPI_MODE_T
 typedef enum {
     SPI_MODE_0 = 0,                                             /**< CPOL=0, CPHA=0 */
@@ -163,6 +176,7 @@ typedef enum {
     SPI_CLK_10MHZ  = SPI_FREQUENCY_FREQUENCY_M8     /**< 10MHz */
 } spi_clk_t;
 /** @} */
+#endif /* ndef CPU_FAM_NRF9160 */
 #endif /* ndef DOXYGEN */
 
 /**
@@ -173,6 +187,17 @@ typedef enum {
 /* Set upper limit to the maximum possible value that could go in CRV register */
 #define NWDT_TIME_UPPER_LIMIT          ((UINT32_MAX >> 15) * US_PER_MS + 1)
 /** @} */
+
+/**
+ * @brief Quadrature decoder configuration struct
+ */
+typedef struct {
+    gpio_t a_pin;          /**< GPIO Pin for phase A */
+    gpio_t b_pin;          /**< GPIO Pin for phase B */
+    gpio_t led_pin;        /**< LED GPIO, GPIO_UNDEF to disable */
+    uint8_t sample_period; /**< Sample period used, e.g. QDEC_SAMPLEPER_SAMPLEPER_128us */
+    bool debounce_filter;  /**< Enable/disable debounce filter */
+} qdec_conf_t;
 
 /**
  * @brief Retrieve the exti(GPIOTE) channel associated with a gpio

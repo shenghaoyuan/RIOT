@@ -17,6 +17,8 @@
 #include "embUnit.h"
 #include "periph/rtc.h"
 #include "periph/rtt.h"
+#include "timex.h"
+#include "rtt_rtc.h"
 
 void rtt_add_ticks(uint64_t ticks);
 
@@ -39,14 +41,14 @@ static void test_set_time(void)
     rtc_get_time(&now);
     TEST_ASSERT_EQUAL_INT(0, rtc_tm_compare(&t1, &now));
 
-    rtt_add_ticks(60 * RTT_FREQUENCY);
+    rtt_add_ticks(60LU * RTT_FREQUENCY);
     t1.tm_min++;
     rtc_get_time(&now);
     TEST_ASSERT_EQUAL_INT(t1.tm_sec, now.tm_sec);
     TEST_ASSERT_EQUAL_INT(t1.tm_min, now.tm_min);
     TEST_ASSERT_EQUAL_INT(0, rtc_tm_compare(&t1, &now));
 
-    rtt_add_ticks(60 * 60 * RTT_FREQUENCY);
+    rtt_add_ticks(60LU * 60 * RTT_FREQUENCY);
     t1.tm_hour++;
     rtc_get_time(&now);
     TEST_ASSERT_EQUAL_INT(t1.tm_sec, now.tm_sec);
@@ -54,7 +56,7 @@ static void test_set_time(void)
     TEST_ASSERT_EQUAL_INT(t1.tm_hour, now.tm_hour);
     TEST_ASSERT_EQUAL_INT(0, rtc_tm_compare(&t1, &now));
 
-    rtt_add_ticks(60 * RTT_FREQUENCY);
+    rtt_add_ticks(60LU * RTT_FREQUENCY);
     t1.tm_min++;
     rtc_get_time(&now);
     TEST_ASSERT_EQUAL_INT(t1.tm_sec, now.tm_sec);
@@ -95,7 +97,7 @@ static void test_set_alarm(void)
     rtc_set_time(&t1);
     rtc_set_alarm(&alarm, _alarm_cb, &alarm);
 
-    rtt_add_ticks(60 * RTT_FREQUENCY);
+    rtt_add_ticks(60UL * RTT_FREQUENCY);
     t1.tm_min++;
     rtc_get_time(&now);
     TEST_ASSERT_EQUAL_INT(t1.tm_sec, now.tm_sec);
@@ -131,14 +133,14 @@ static void test_set_alarm_short(void)
     rtc_set_time(&t1);
     rtc_set_alarm(&alarm, _alarm_cb, &alarm);
 
-    rtt_add_ticks(60 * RTT_FREQUENCY);
+    rtt_add_ticks(60LU * RTT_FREQUENCY);
     t1.tm_min++;
     rtc_get_time(&now);
     TEST_ASSERT_EQUAL_INT(t1.tm_sec, now.tm_sec);
     TEST_ASSERT_EQUAL_INT(t1.tm_min, now.tm_min);
     TEST_ASSERT_EQUAL_INT(0, rtc_tm_compare(&t1, &now));
 
-    rtt_add_ticks(60*60 * RTT_FREQUENCY);
+    rtt_add_ticks(60LU * 60 * RTT_FREQUENCY);
     t1.tm_hour++;
     rtc_get_time(&now);
     TEST_ASSERT_EQUAL_INT(t1.tm_sec, now.tm_sec);
@@ -170,14 +172,14 @@ static void test_set_alarm_set_time(void)
     t1.tm_hour += 4;
     rtc_set_time(&t1);
 
-    rtt_add_ticks(60 * RTT_FREQUENCY);
+    rtt_add_ticks(60LU * RTT_FREQUENCY);
     t1.tm_min++;
     rtc_get_time(&now);
     TEST_ASSERT_EQUAL_INT(t1.tm_sec, now.tm_sec);
     TEST_ASSERT_EQUAL_INT(t1.tm_min, now.tm_min);
     TEST_ASSERT_EQUAL_INT(0, rtc_tm_compare(&t1, &now));
 
-    rtt_add_ticks(60*60 * RTT_FREQUENCY);
+    rtt_add_ticks(60LU * 60 * RTT_FREQUENCY);
     t1.tm_hour++;
     rtc_get_time(&now);
     TEST_ASSERT_EQUAL_INT(t1.tm_sec, now.tm_sec);
@@ -190,7 +192,7 @@ static void test_set_alarm_set_time(void)
 
     t1.tm_hour--;
     rtc_set_time(&t1);
-    rtt_add_ticks(60*60 * RTT_FREQUENCY);
+    rtt_add_ticks(60LU * 60 * RTT_FREQUENCY);
     t1.tm_hour++;
     rtc_get_time(&now);
     TEST_ASSERT_EQUAL_INT(t1.tm_sec, now.tm_sec);
@@ -199,8 +201,31 @@ static void test_set_alarm_set_time(void)
 
     TEST_ASSERT_EQUAL_INT(2, alarm.tm_isdst);
 
-    rtt_add_ticks(60*60 * RTT_FREQUENCY);
+    rtt_add_ticks(60LU * 60 * RTT_FREQUENCY);
     TEST_ASSERT_EQUAL_INT(2, alarm.tm_isdst);
+}
+
+static void test_rtt_rtc_settimeofday(void)
+{
+    uint32_t s = 10, sec;
+    uint32_t us = US_PER_SEC / 8, micro_sec;
+
+    rtt_rtc_settimeofday(s, us);
+    rtt_rtc_gettimeofday(&sec, &micro_sec);
+
+    TEST_ASSERT_EQUAL_INT(s, sec);
+    TEST_ASSERT_EQUAL_INT(us, micro_sec);
+
+    rtt_add_ticks(1LU * RTT_FREQUENCY);
+    s++;
+    rtt_rtc_gettimeofday(&sec, &micro_sec);
+    TEST_ASSERT_EQUAL_INT(s, sec);
+
+    rtt_add_ticks(RTT_FREQUENCY / 4);
+    us += US_PER_SEC / 4;
+    rtt_rtc_gettimeofday(&sec, &micro_sec);
+    TEST_ASSERT_EQUAL_INT(s, sec);
+    TEST_ASSERT_EQUAL_INT(us, micro_sec);
 }
 
 Test *tests_rtt_rtt_tests(void)
@@ -210,6 +235,7 @@ Test *tests_rtt_rtt_tests(void)
         new_TestFixture(test_set_alarm),
         new_TestFixture(test_set_alarm_short),
         new_TestFixture(test_set_alarm_set_time),
+        new_TestFixture(test_rtt_rtc_settimeofday),
     };
 
     EMB_UNIT_TESTCALLER(rtt_rtc_tests, NULL, NULL, fixtures);

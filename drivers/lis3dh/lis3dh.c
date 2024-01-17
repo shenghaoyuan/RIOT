@@ -23,7 +23,7 @@
 #include "periph/spi.h"
 #include "lis3dh.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
 
 #define SPI_MODE            SPI_MODE_3
@@ -215,7 +215,6 @@ int lis3dh_get_fifo_level(const lis3dh_t *dev)
     level = (reg & LIS3DH_FIFO_SRC_REG_FSS_MASK) >> LIS3DH_FIFO_SRC_REG_FSS_SHIFT;
     return level;
 }
-
 
 /**
  * @brief Read sequential registers from the LIS3DH.

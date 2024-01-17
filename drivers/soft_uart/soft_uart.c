@@ -13,11 +13,10 @@
  * @file
  * @brief       Software UART implementation
  *
- * @author      Benjamin Valentin <benjjamin.valentin@ml-pa.com>
+ * @author      Benjamin Valentin <benjamin.valentin@ml-pa.com>
  */
 
 #include <stdio.h>
-#include <assert.h>
 
 #include "mutex.h"
 #include "soft_uart.h"
@@ -151,7 +150,7 @@ int soft_uart_init(soft_uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void
         return UART_NOBAUD;
     }
 
-    if (cfg->rx_pin == GPIO_UNDEF) {
+    if (!gpio_is_valid(cfg->rx_pin)) {
         rx_cb = NULL;
     }
 
@@ -166,7 +165,7 @@ int soft_uart_init(soft_uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void
 
     ctx->state_rx = STATE_RX_IDLE;
 
-    if (cfg->tx_pin != GPIO_UNDEF) {
+    if (gpio_is_valid(cfg->tx_pin)) {
         timer_init(cfg->tx_timer, cfg->timer_freq, _tx_timer_cb, (void *)uart);
         gpio_write(cfg->tx_pin, !(cfg->flags & SOFT_UART_FLAG_INVERT_TX));
         gpio_init(cfg->tx_pin, GPIO_OUT);
@@ -288,7 +287,7 @@ static void soft_uart_write_byte(soft_uart_t uart, uint8_t data)
     mutex_lock(&ctx->sync);
 }
 
-void soft_uart_write(uart_t uart, const uint8_t *data, size_t len)
+void soft_uart_write(soft_uart_t uart, const uint8_t *data, size_t len)
 {
     const soft_uart_conf_t *cfg = &soft_uart_config[uart];
     struct uart_ctx *ctx = &soft_uart_ctx[uart];

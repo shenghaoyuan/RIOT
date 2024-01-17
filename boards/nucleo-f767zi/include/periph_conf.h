@@ -19,13 +19,23 @@
 #ifndef PERIPH_CONF_H
 #define PERIPH_CONF_H
 
+/* This board provides an LSE */
+#ifndef CONFIG_BOARD_HAS_LSE
+#define CONFIG_BOARD_HAS_LSE    1
+#endif
+
+/* This board provides an HSE */
+#ifndef CONFIG_BOARD_HAS_HSE
+#define CONFIG_BOARD_HAS_HSE    1
+#endif
+
 #include "periph_cpu.h"
-#include "f7/cfg_clock_216_8_1.h"
+#include "clk_conf.h"
 #include "cfg_i2c1_pb8_pb9.h"
-#include "cfg_spi_divtable.h"
 #include "cfg_rtt_default.h"
 #include "cfg_timer_tim2.h"
 #include "cfg_usb_otg_fs.h"
+#include "mii.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -108,9 +118,6 @@ static const uart_conf_t uart_config[] = {
 
 /**
  * @name   SPI configuration
- *
- * @note    The spi_divtable is auto-generated from
- *          `cpu/stm32_common/dist/spi_divtable/spi_divtable.c`
  * @{
  */
 static const spi_conf_t spi_config[] = {
@@ -128,7 +135,7 @@ static const spi_conf_t spi_config[] = {
 #endif
         .miso_pin = GPIO_PIN(PORT_A, 6),
         .sclk_pin = GPIO_PIN(PORT_A, 5),
-        .cs_pin   = GPIO_UNDEF,
+        .cs_pin   = SPI_CS_UNDEF,
         .mosi_af  = GPIO_AF5,
         .miso_af  = GPIO_AF5,
         .sclk_af  = GPIO_AF5,
@@ -141,7 +148,7 @@ static const spi_conf_t spi_config[] = {
         .mosi_pin = GPIO_PIN(PORT_E, 6),
         .miso_pin = GPIO_PIN(PORT_E, 5),
         .sclk_pin = GPIO_PIN(PORT_E, 2),
-        .cs_pin   = GPIO_UNDEF,
+        .cs_pin   = SPI_CS_UNDEF,
         .mosi_af  = GPIO_AF5,
         .miso_af  = GPIO_AF5,
         .sclk_af  = GPIO_AF5,
@@ -160,11 +167,10 @@ static const spi_conf_t spi_config[] = {
  */
 static const eth_conf_t eth_config = {
     .mode = RMII,
-    .mac = { 0 },
-    .speed = ETH_SPEED_100TX_FD,
+    .speed = MII_BMCR_SPEED_100 | MII_BMCR_FULL_DPLX,
     .dma = 3,
     .dma_chan = 8,
-    .phy_addr = 0x01,
+    .phy_addr = 0x00,
     .pins = {
         GPIO_PIN(PORT_G, 13),
         GPIO_PIN(PORT_B, 13),
@@ -178,14 +184,29 @@ static const eth_conf_t eth_config = {
     }
 };
 
-#define ETH_RX_BUFFER_COUNT (4)
-#define ETH_TX_BUFFER_COUNT (4)
-
-#define ETH_RX_BUFFER_SIZE (1524)
-#define ETH_TX_BUFFER_SIZE (1524)
-
 #define ETH_DMA_ISR        isr_dma2_stream0
+/** @} */
 
+/**
+ * @name   ADC configuration
+ *
+ * Note that we do not configure all ADC channels,
+ * and not in the STM32F767ZI order.  Instead, we
+ * just define 6 ADC channels, for the Nucleo
+ * Arduino header pins A0-A5
+ *
+ * @{
+ */
+static const adc_conf_t adc_config[] = {
+        {GPIO_PIN(PORT_A, 3), 0, 0},
+        {GPIO_PIN(PORT_C, 0), 0, 1},
+        {GPIO_PIN(PORT_C, 3), 0, 4},
+        {GPIO_PIN(PORT_F, 3), 0, 8},
+        {GPIO_PIN(PORT_F, 5), 0, 11},
+        {GPIO_PIN(PORT_F, 10), 0, 10},
+};
+
+#define ADC_NUMOF           ARRAY_SIZE(adc_config)
 /** @} */
 
 #ifdef __cplusplus

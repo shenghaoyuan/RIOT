@@ -12,6 +12,8 @@
  *
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.mk}
  * USEPKG += tinydtls
+ * # a cryptographically secure implementation of PRNG is needed
+ * USEMODULE += prng_sha1prng
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  *
  * Supported Cipher Suites
@@ -60,13 +62,6 @@
  */
 #ifndef CONFIG_DTLS_CONTEXT_MAX
 #define CONFIG_DTLS_CONTEXT_MAX    (2)
-#endif
-
- /**
- * @brief The maximum number DTLS peers (i.e. sessions)
- */
-#ifndef CONFIG_DTLS_PEER_MAX
-#define CONFIG_DTLS_PEER_MAX       (1)
 #endif
 
  /**

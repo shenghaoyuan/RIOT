@@ -30,6 +30,20 @@ extern "C" {
 #endif
 
 /**
+* @name    Clock configuration
+* @{
+*/
+
+#ifndef DOXYGEN
+/* Mapping of Kconfig defines to the respective enumeration values */
+#if CONFIG_ESP8266_CPU_FREQUENCY_80
+#define ESP8266_CPU_FREQUENCY   80
+#elif CONFIG_ESP8266_CPU_FREQUENCY_160
+#define ESP8266_CPU_FREQUENCY   160
+#endif
+#endif
+
+/**
  * @brief   Defines the CPU frequency in MHz
  *
  * Possible values are 80 and 160 MHz.
@@ -37,6 +51,12 @@ extern "C" {
 #ifndef ESP8266_CPU_FREQUENCY
 #define ESP8266_CPU_FREQUENCY   (80)
 #endif
+
+/**
+ * @brief   Mapping configured ESP8266 default clock to CLOCK_CORECLOCK define
+ */
+#define CLOCK_CORECLOCK         (1000000UL * ESP8266_CPU_FREQUENCY)
+/** @} */
 
 /**
  * @name   Stack size configurations

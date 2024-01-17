@@ -27,6 +27,7 @@
 #include "syscalls.h"
 #include "timex.h"
 
+#include "macros/units.h"
 #include "rom/ets_sys.h"
 #include "rom/libc_stubs.h"
 #include "soc/rtc.h"
@@ -40,10 +41,8 @@
 #include "esp_heap_caps.h"
 #endif
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG 0
 #include "debug.h"
-
-#define MHZ 1000000UL
 
 #ifdef MODULE_ESP_IDF_HEAP
 
@@ -164,7 +163,7 @@ static struct syscall_stub_table s_stub_table =
 void IRAM syscalls_init_arch(void)
 {
     /* enable the system timer in us (TMG0 is enabled by default) */
-    TIMER_SYSTEM.config.divider = rtc_clk_apb_freq_get()/MHZ;
+    TIMER_SYSTEM.config.divider = rtc_clk_apb_freq_get() / MHZ(1);
     TIMER_SYSTEM.config.autoreload = 0;
     TIMER_SYSTEM.config.enable = 1;
 
@@ -182,7 +181,7 @@ uint32_t system_get_time(void)
 
 uint32_t system_get_time_ms(void)
 {
-    return system_get_time_64() / USEC_PER_MSEC;
+    return system_get_time_64() / US_PER_MS;
 }
 
 uint64_t system_get_time_64(void)

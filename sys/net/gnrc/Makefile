@@ -88,6 +88,9 @@ endif
 ifneq (,$(filter gnrc_rpl_p2p,$(USEMODULE)))
   DIRS += routing/rpl/p2p
 endif
+ifneq (,$(filter gnrc_ipv6_auto_subnets,$(USEMODULE)))
+  DIRS += routing/ipv6_auto_subnets
+endif
 ifneq (,$(filter gnrc_sixlowpan,$(USEMODULE)))
   DIRS += network_layer/sixlowpan
 endif
@@ -100,8 +103,14 @@ endif
 ifneq (,$(filter gnrc_sixlowpan_frag_fb,$(USEMODULE)))
   DIRS += network_layer/sixlowpan/frag/fb
 endif
+ifneq (,$(filter gnrc_sixlowpan_frag_minfwd,$(USEMODULE)))
+  DIRS += network_layer/sixlowpan/frag/minfwd
+endif
 ifneq (,$(filter gnrc_sixlowpan_frag_rb,$(USEMODULE)))
   DIRS += network_layer/sixlowpan/frag/rb
+endif
+ifneq (,$(filter gnrc_sixlowpan_frag_sfr,$(USEMODULE)))
+  DIRS += network_layer/sixlowpan/frag/sfr
 endif
 ifneq (,$(filter gnrc_sixlowpan_frag_stats,$(USEMODULE)))
   DIRS += network_layer/sixlowpan/frag/stats
@@ -124,11 +133,17 @@ endif
 ifneq (,$(filter gnrc_sock_udp,$(USEMODULE)))
   DIRS += sock/udp
 endif
+ifneq (,$(filter gnrc_sock_tcp,$(USEMODULE)))
+  DIRS += sock/tcp
+endif
 ifneq (,$(filter gnrc_udp,$(USEMODULE)))
   DIRS += transport_layer/udp
 endif
 ifneq (,$(filter gnrc_tcp,$(USEMODULE)))
   DIRS += transport_layer/tcp
+endif
+ifneq (,$(filter gnrc_tx_sync,$(USEMODULE)))
+  DIRS += tx_sync
 endif
 
 include $(RIOTBASE)/Makefile.base

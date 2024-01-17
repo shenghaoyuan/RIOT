@@ -18,9 +18,6 @@
  * @}
  */
 
-#define ENABLE_DEBUG    (0)
-#include "debug.h"
-
 #include <stdint.h>
 #include <stdio.h>
 
@@ -31,6 +28,9 @@
 #include "esp/common_macros.h"
 #include "esp/xtensa_ops.h"
 #include "xtensa/xtensa_context.h"
+
+#define ENABLE_DEBUG 0
+#include "debug.h"
 
 /**
  * @brief Set on entry into and reset on exit from an ISR
@@ -94,8 +94,19 @@ void IRAM irq_restore(unsigned int state)
 /**
  * @brief See if the current context is inside an ISR
  */
-int IRAM irq_is_in(void)
+bool IRAM irq_is_in(void)
 {
     DEBUG("irq_interrupt_nesting = %d\n", irq_interrupt_nesting);
     return irq_interrupt_nesting;
+}
+
+/**
+ * @brief Test if IRQs are currently enabled
+ */
+bool IRAM irq_is_enabled(void)
+{
+    uint32_t reg;
+
+    RSR(reg, 230);
+    return (reg & 0xf) == 0;
 }

@@ -32,10 +32,10 @@
  * configuration.
  *
  * For detailed information about the configuration of ESP32 boards, see
- * section \ref esp32_comm_periph "Common Peripherals".
+ * section \ref esp32_peripherals "Common Peripherals".
  *
  * @note
- * Most definitions can be overridden by an \ref esp32_app_spec_conf
+ * Most definitions can be overridden by an \ref esp32_application_specific_configurations
  * "application-specific board configuration".
  *
  * @file
@@ -77,6 +77,8 @@
 #define LED_BLUE_PIN    LED2_PIN /**< LED2 is a blue LED */
 #endif
 
+/** @} */
+
 /**
  * @name   SD-Card interface configuration
  *
@@ -97,6 +99,49 @@
 #endif
 /** @} */
 
+/**
+ * @name    LCD configuration
+ *
+ * This configuration cannot be changed.
+ * @{
+ */
+#if MODULE_ILI9341 || DOXYGEN
+#define LCD_CS                  GPIO22
+#define LCD_RST                 GPIO18
+#define LCD_DC                  GPIO21
+#define LCD_BACKLIGHT           GPIO5
+
+#define BACKLIGHT_ON            gpio_clear(LCD_BACKLIGHT)
+#define BACKLIGHT_OFF           gpio_set(LCD_BACKLIGHT)
+
+#define ILI9341_PARAM_SPI       SPI_DEV(1)
+#define ILI9341_PARAM_SPI_CLK   SPI_CLK_10MHZ
+#define ILI9341_PARAM_CS        LCD_CS
+#define ILI9341_PARAM_DCX       LCD_DC
+#define ILI9341_PARAM_RST       LCD_RST
+#define ILi9341_PARAM_RGB       0
+#define ILI9341_PARAM_INVERTED  0
+#define ILI9341_PARAM_ROTATION  ILI9341_ROTATION_HORZ_FLIP
+#endif
+/** @} */
+
+#ifndef DOXYGEN
+/**
+ * @name    Default configuration parameters for ESP WiFi Enterprise netdev
+ * @{
+ */
+#ifndef ESP_WIFI_EAP_USER
+/** User name used in phase 2 (inner) EAP authentication. */
+#define ESP_WIFI_EAP_USER   "riot-os@riot-os.org"
+#endif /* ESP_WIFI_EAP_USER */
+
+#ifndef ESP_WIFI_EAP_PASS
+/** Password used in phase 2 (inner) EAP authentication. */
+#define ESP_WIFI_EAP_PASS   "riot-os"
+#endif /* ESP_WIFI_EAP_PASS */
+/** @} */
+#endif /* !DOXYGEN */
+
 /* include common board definitions as last step */
 #include "board_common.h"
 
@@ -108,6 +153,10 @@ extern "C" {
  * @brief Initialize the board specific hardware
  */
 static inline void board_init(void) {
+#if MODULE_ILI9341
+    gpio_init(LCD_BACKLIGHT, GPIO_OUT);
+#endif
+
     /* there is nothing special to initialize on this board */
     board_init_common();
 }

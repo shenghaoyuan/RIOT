@@ -10,6 +10,10 @@ config CPU_ARCH_ARMV4T
     select HAS_ARCH_32BIT
     select HAS_ARCH_ARM
     select HAS_CPP
+    select HAS_LIBSTDCPP
+    select MODULE_MALLOC_THREAD_SAFE if TEST_KCONFIG
+    select MODULE_PERIPH if TEST_KCONFIG
+    imply MODULE_NEWLIB_NANO
 
 config CPU_CORE_ARM7TDMI_S
     bool
@@ -22,6 +26,8 @@ config CPU_CORE_ARM7TDMI_S
 ## Declaration of specific features
 config HAS_ARCH_ARM7
     bool
+    select HAS_NEWLIB
+    select HAS_PICOLIBC
     help
         Indicates that the core is part of the ARM7 group of cores.
 
@@ -31,3 +37,19 @@ config CPU_ARCH
 
 config CPU_CORE
     default "arm7tdmi_s" if CPU_CORE_ARM7TDMI_S
+
+config MODULE_ARM7_COMMON
+    bool
+    depends on TEST_KCONFIG
+    depends on MODULE_NEWLIB || MODULE_PICOLIBC
+    depends on HAS_ARCH_ARM7
+    default y
+    help
+      Common arm7 code.
+
+rsource "periph/Kconfig"
+
+choice LIBC_IMPLEMENTATION
+    default MODULE_NEWLIB
+    default MODULE_PICOLIBC
+endchoice

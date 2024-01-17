@@ -17,6 +17,7 @@
  * @}
  */
 
+#include <assert.h>
 #include <stdbool.h>
 
 #include "periph/rtt.h"
@@ -33,9 +34,6 @@
 #include "net/gnrc/netif/ieee802154.h"
 #include "net/netdev/ieee802154.h"
 
-#define ENABLE_DEBUG    (0)
-#include "debug.h"
-
 #ifndef LOG_LEVEL
 /**
  * @brief Default log level define
@@ -45,17 +43,20 @@
 
 #include "log.h"
 
+#define ENABLE_DEBUG 0
+#include "debug.h"
+
 int _gnrc_gomach_transmit(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt)
 {
     netdev_t *dev = netif->dev;
-    netdev_ieee802154_t *state = (netdev_ieee802154_t *)netif->dev;
+    netdev_ieee802154_t *state = container_of(dev, netdev_ieee802154_t, netdev);
     gnrc_netif_hdr_t *netif_hdr;
     const uint8_t *src, *dst = NULL;
     int res = 0;
     size_t src_len, dst_len;
     uint8_t mhr[IEEE802154_MAX_HDR_LEN];
     uint8_t flags = (uint8_t)(state->flags & NETDEV_IEEE802154_SEND_MASK);
-    le_uint16_t dev_pan = byteorder_btols(byteorder_htons(state->pan));
+    le_uint16_t dev_pan = byteorder_htols(state->pan);
 
     flags |= IEEE802154_FCF_TYPE_DATA;
     if (pkt == NULL) {
@@ -158,7 +159,8 @@ static int _parse_packet(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt,
     assert(info != NULL);
     assert(pkt != NULL);
 
-    netdev_ieee802154_t *state = (netdev_ieee802154_t *)netif->dev;
+    netdev_t *dev = netif->dev;
+    netdev_ieee802154_t *state = container_of(dev, netdev_ieee802154_t, netdev);
     /* Get the packet sequence number */
     info->seq = ieee802154_get_seq(pkt->next->data);
 
@@ -175,7 +177,7 @@ static int _parse_packet(gnrc_netif_t *netif, gnrc_pktsnip_t *pkt,
     gnrc_netif_hdr_set_netif(netif_hdr, netif);
     pkt->type = state->proto;
     gnrc_pktbuf_remove_snip(pkt, pkt->next);
-    LL_APPEND(pkt, netif_snip);
+    pkt = gnrc_pkt_append(pkt, netif_snip);
 
     gnrc_pktsnip_t *gomach_snip = NULL;
     gnrc_gomach_hdr_t *gomach_hdr = NULL;
@@ -306,18 +308,18 @@ void gnrc_gomach_set_netdev_state(gnrc_netif_t *netif, netopt_state_t devstate)
 #if (GNRC_GOMACH_ENABLE_DUTYCYLE_RECORD == 1)
     if (devstate == NETOPT_STATE_IDLE) {
         if (!(netif->mac.prot.gomach.gomach_info & GNRC_GOMACH_INTERNAL_INFO_RADIO_IS_ON)) {
-            netif->mac.prot.gomach.last_radio_on_time_ticks = xtimer_now_usec64();
+            netif->mac.prot.gomach.last_radio_on_time_ms = xtimer_now_usec64();
             netif->mac.prot.gomach.gomach_info |= GNRC_GOMACH_INTERNAL_INFO_RADIO_IS_ON;
         }
         return;
     }
     else if ((devstate == NETOPT_STATE_SLEEP) &&
              (netif->mac.prot.gomach.gomach_info & GNRC_GOMACH_INTERNAL_INFO_RADIO_IS_ON)) {
-        netif->mac.prot.gomach.radio_off_time_ticks = xtimer_now_usec64();
+        netif->mac.prot.gomach.radio_off_time_ms = xtimer_now_usec64();
 
-        netif->mac.prot.gomach.awake_duration_sum_ticks +=
-            (netif->mac.prot.gomach.radio_off_time_ticks -
-             netif->mac.prot.gomach.last_radio_on_time_ticks);
+        netif->mac.prot.gomach.awake_duration_sum_ms +=
+            (netif->mac.prot.gomach.radio_off_time_ms -
+             netif->mac.prot.gomach.last_radio_on_time_ms);
 
         netif->mac.prot.gomach.gomach_info &= ~GNRC_GOMACH_INTERNAL_INFO_RADIO_IS_ON;
     }

@@ -28,7 +28,7 @@
 
 #include "clist.h"
 #include "event.h"
-#include "kernel_types.h"
+#include "sched.h"
 #include "kernel_defines.h"
 #include "msg.h"
 #include "thread.h"
@@ -121,7 +121,15 @@ extern "C" {
 #define USBUS_HANDLER_FLAG_SOF      (0x0002)    /**< Report SOF events */
 #define USBUS_HANDLER_FLAG_SUSPEND  (0x0004)    /**< Report suspend events */
 #define USBUS_HANDLER_FLAG_RESUME   (0x0008)    /**< Report resume from suspend */
-#define USBUS_HANDLER_FLAG_TR_FAIL  (0x0010)    /**< Report transfer fail */
+
+/**
+ * @brief Report transfer fail
+ *
+ * @deprecated This event is deprecated as only a limited number of low level
+ *             devices report this and it doesn't offer value for upper layer
+ *             code. This flag will be removed after the 2022.07 release
+ */
+#define USBUS_HANDLER_FLAG_TR_FAIL  (0x0010)
 #define USBUS_HANDLER_FLAG_TR_STALL (0x0020)    /**< Report transfer stall complete */
 /** @} */
 
@@ -294,6 +302,7 @@ typedef struct usbus_interface_alt {
                                              descriptor generators */
     usbus_endpoint_t *ep;               /**< List of associated endpoints for
                                              this alternative setting */
+    usbus_string_t *descr;              /**< Descriptor string */
 } usbus_interface_alt_t;
 
 /**
@@ -398,6 +407,7 @@ struct usbus {
     usbus_string_t manuf;                           /**< Manufacturer string                   */
     usbus_string_t product;                         /**< Product string                        */
     usbus_string_t config;                          /**< Configuration string                  */
+    usbus_string_t serial;                          /**< serial string                  */
     usbus_endpoint_t ep_out[USBDEV_NUM_ENDPOINTS];  /**< USBUS OUT endpoints                   */
     usbus_endpoint_t ep_in[USBDEV_NUM_ENDPOINTS];   /**< USBUS IN endpoints                    */
     event_queue_t queue;                            /**< Event queue                           */
@@ -414,6 +424,12 @@ struct usbus {
     usbus_state_t state;                            /**< Current state                         */
     usbus_state_t pstate;                           /**< state to recover to from suspend      */
     uint8_t addr;                                   /**< Address of the USB peripheral         */
+#ifndef CONFIG_USB_SERIAL_STR
+    /**
+     * @brief Hex representation of the device serial number
+     */
+    char serial_str[2 * CONFIG_USB_SERIAL_BYTE_LENGTH + 1];
+#endif
 };
 
 /**
@@ -448,6 +464,15 @@ uint16_t usbus_add_string_descriptor(usbus_t *usbus, usbus_string_t *desc,
  * @return          interface index
  */
 uint16_t usbus_add_interface(usbus_t *usbus, usbus_interface_t *iface);
+
+/**
+ * @brief Add alternate settings to a given interface
+ *
+ * @param[in] iface   USB interface
+ * @param[in] alt     alternate settings interface to add
+ */
+void usbus_add_interface_alt(usbus_interface_t *iface,
+                                 usbus_interface_alt_t *alt);
 
 /**
  * @brief Find an endpoint from an interface based on the endpoint properties
@@ -588,7 +613,6 @@ static inline bool usbus_handler_isset_flag(usbus_handler_t *handler,
 {
     return handler->flags & flag;
 }
-
 
 #ifdef __cplusplus
 }

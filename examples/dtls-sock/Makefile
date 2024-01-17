@@ -12,14 +12,23 @@ FEATURES_REQUIRED += arch_32bit
 
 # Include packages that pull up and auto-init the link layer.
 # NOTE: 6LoWPAN will be included if IEEE802.15.4 devices are present
-USEMODULE += gnrc_netdev_default
+USEMODULE += netdev_default
 USEMODULE += auto_init_gnrc_netif
 # Specify the mandatory networking modules for IPv6 and UDP
 USEMODULE += gnrc_ipv6_default
-USEMODULE += gnrc_sock_udp
 
-# Use tinydtls for sock_dtls
-USEMODULE += tinydtls_sock_dtls
+# Specify DTLS implementation
+USEPKG += tinydtls
+
+# Pull in sock APIs
+USEMODULE += sock_dtls
+USEMODULE += sock_udp
+
+# extra utilities for endpoint printing
+USEMODULE += sock_util
+
+# tinydtls needs crypto secure PRNG
+USEMODULE += prng_sha1prng
 
 # Add also the shell, some shell commands
 USEMODULE += shell

@@ -52,15 +52,10 @@ extern "C" {
 #define STM32_USB_OTG_CID_1x        /**< USB OTG FS version 0x00001200 */
 #elif defined(USB_OTG_GCCFG_VBDEN)
 #define STM32_USB_OTG_CID_2x        /**< USB OTG FS version 0x00002000 */
+#elif defined(USB)
+#define STM32_USB_FS_CID_1x         /**< USB FS version 0x00001200 */
 #else
 #error Unknown USB peripheral version
-#endif
-
-/**
- * @brief Buffer space available for endpoint TX/RX data
- */
-#ifndef STM32_USB_OTG_BUF_SPACE
-#define STM32_USB_OTG_BUF_SPACE  USBDEV_EP_BUF_SPACE
 #endif
 
 /**
@@ -118,18 +113,35 @@ extern "C" {
 #endif
 
 /**
+ * @brief stm32 USB OTG peripheral device out endpoint struct
+ */
+typedef struct {
+    usbdev_ep_t ep;     /**< Inherited usbdev endpoint struct */
+    uint8_t *out_buf;   /**< Requested data output buffer */
+} stm32_usb_otg_fshs_out_ep_t;
+
+/**
  * @brief stm32 USB OTG peripheral device context
  */
 typedef struct {
     usbdev_t usbdev;                            /**< Inherited usbdev struct */
     const stm32_usb_otg_fshs_config_t *config;  /**< USB peripheral config   */
-    uint8_t buffer[STM32_USB_OTG_BUF_SPACE];    /**< Buffer space for endpoints */
-    size_t occupied;                            /**< Buffer space occupied */
     size_t fifo_pos;                            /**< FIFO space occupied */
     usbdev_ep_t *in;                            /**< In endpoints */
-    usbdev_ep_t *out;                           /**< Out endpoints */
+    stm32_usb_otg_fshs_out_ep_t *out;           /**< Out endpoints */
     bool suspend;                               /**< Suspend status */
 } stm32_usb_otg_fshs_t;
+
+/**
+ * @brief stm32 USB Device FS only peripheral device context
+ */
+typedef struct {
+    usbdev_t usbdev;                            /**< Inherited usbdev struct */
+    const stm32_usbdev_fs_config_t *config;     /**< USB peripheral config   */
+    usbdev_ep_t *in;                            /**< In endpoints */
+    usbdev_ep_t *out;                           /**< Out endpoints */
+    size_t used;                                /**< Bytes used by usbdev stack */
+} stm32_usbdev_fs_t;
 
 #ifdef __cplusplus
 }

@@ -60,6 +60,7 @@ enum {
     SAM0_GCLK_1MHZ,                     /**< 1 MHz clock for xTimer */
     SAM0_GCLK_32KHZ,                    /**< 32 kHz clock           */
     SAM0_GCLK_1KHZ,                     /**< 1 kHz clock            */
+    SAM0_GCLK_DISABLED = 0xF,           /**< disabled GCLK          */
 };
 /** @} */
 
@@ -83,10 +84,6 @@ static inline int _sercom_id(SercomUsart *sercom)
 }
 
 #ifndef DOXYGEN
-/**
- * @brief   Override the ADC resolution configuration
- * @{
- */
 #define HAVE_ADC_RES_T
 typedef enum {
     ADC_RES_6BIT  = 0xff,                       /**< not supported */
@@ -96,7 +93,6 @@ typedef enum {
     ADC_RES_14BIT = 0xfe,                       /**< not supported */
     ADC_RES_16BIT = 0xfd                        /**< not supported */
 } adc_res_t;
-/** @} */
 #endif /* ndef DOXYGEN */
 
 /**
@@ -119,6 +115,33 @@ typedef enum {
 #define RTT_CLOCK_FREQUENCY (32768U)                      /* in Hz */
 #define RTT_MIN_FREQUENCY   (RTT_CLOCK_FREQUENCY / 1024U) /* in Hz */
 #define RTT_MAX_FREQUENCY   (RTT_CLOCK_FREQUENCY)         /* in Hz */
+/** @} */
+
+/**
+ * @brief   NVM User Row Mapping - Dedicated Entries
+ *          Config values will be applied at power-on.
+ * @{
+ */
+struct sam0_aux_cfg_mapping {
+    uint64_t bootloader_size            :  3; /**< BOOTPROT: Bootloader Size            */
+    uint64_t reserved_0                 :  1; /**< Factory settings - do not change.    */
+    uint64_t eeprom_size                :  3; /**< one of eight different EEPROM sizes  */
+    uint64_t reserved_1                 :  1; /**< Factory settings - do not change.    */
+    uint64_t bod33_level                :  6; /**< BOD33 threshold level at power-on.   */
+    uint64_t bod33_enable               :  1; /**< BOD33 Enable at power-on.            */
+    uint64_t bod33_action               :  2; /**< BOD33 Action at power-on.            */
+    uint64_t reserved_2                 :  8; /**< Factory settings - do not change.    */
+    uint64_t wdt_enable                 :  1; /**< WDT Enable at power-on.              */
+    uint64_t wdt_always_on              :  1; /**< WDT Always-On at power-on.           */
+    uint64_t wdt_period                 :  4; /**< WDT Period at power-on.              */
+    uint64_t wdt_window                 :  4; /**< WDT Window at power-on.              */
+    uint64_t wdt_ewoffset               :  4; /**< WDT Early Warning Interrupt Offset   */
+    uint64_t wdt_window_enable          :  1; /**< WDT Window mode enabled on power-on  */
+    uint64_t bod33_hysteresis           :  1; /**< BOD33 Hysteresis configuration       */
+    const uint64_t bod12_calibration    :  1; /**< Factory settings - do not change.    */
+    uint64_t reserved_3                 :  6; /**< Factory settings - do not change.    */
+    uint64_t nvm_locks                  : 16; /**< NVM Region Lock Bits.                */
+};
 /** @} */
 
 #ifdef __cplusplus

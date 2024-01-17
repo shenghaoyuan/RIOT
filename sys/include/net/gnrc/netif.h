@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Freie Universität Berlin
+ * Copyright (C) 2017-20 Freie Universität Berlin
  *
  * This file is subject to the terms and conditions of the GNU Lesser
  * General Public License v2.1. See the file LICENSE in the top level
@@ -13,6 +13,11 @@
  *
  * Network interfaces in the context of GNRC are threads for protocols that are
  * below the network layer.
+ *
+ * ## Single interface optimizations
+ *
+ * If you only have one network interface on the board, you can select the
+ * `gnrc_netif_single` pseudo-module to enable further optimisations.
  *
  * @{
  *
@@ -28,7 +33,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "kernel_types.h"
+#include "sched.h"
 #include "msg.h"
 #ifdef MODULE_GNRC_NETIF_BUS
 #include "msg_bus.h"
@@ -54,6 +59,10 @@
 #if IS_USED(MODULE_GNRC_NETIF_MAC)
 #include "net/gnrc/netif/mac.h"
 #endif
+#if IS_USED(MODULE_GNRC_NETIF_PKTQ)
+#include "net/gnrc/netif/pktq/type.h"
+#endif
+#include "net/l2util.h"
 #include "net/ndp.h"
 #include "net/netdev.h"
 #include "net/netopt.h"
@@ -68,7 +77,7 @@ extern "C" {
 #endif
 
 /**
- * @brief   Per-Interface Event Message Busses
+ * @brief   Per-Interface Event Message Buses
  */
 typedef enum {
 #ifdef MODULE_GNRC_IPV6
@@ -167,6 +176,14 @@ typedef struct {
 #if IS_USED(MODULE_GNRC_NETIF_6LO) || defined(DOXYGEN)
     gnrc_netif_6lo_t sixlo;                 /**< 6Lo component */
 #endif
+#if IS_USED(MODULE_GNRC_NETIF_PKTQ) || defined(DOXYGEN)
+    /**
+     * @brief   Packet queue for sending
+     *
+     * @note    Only available with @ref net_gnrc_netif_pktq.
+     */
+    gnrc_netif_pktq_t send_queue;
+#endif
     uint8_t cur_hl;                         /**< Current hop-limit for out-going packets */
     uint8_t device_type;                    /**< Device type */
     kernel_pid_t pid;                       /**< PID of the network interface's thread */
@@ -177,21 +194,27 @@ typedef struct {
  */
 struct gnrc_netif_ops {
     /**
-     * @brief   Initializes network interface beyond the default settings
+     * @brief   Initializes and registers network interface.
      *
      * @pre `netif != NULL`
      *
      * @param[in] netif The network interface.
      *
-     * This is called after the network device's initial configuration, right
-     * before the interface's thread starts receiving messages. It is not
-     * necessary to lock the interface's mutex gnrc_netif_t::mutex, since it is
-     * already locked. Set to @ref gnrc_netif_default_init() if you do not need
-     * any special initialization. If you do need special initialization, it is
-     * recommended to call @ref gnrc_netif_default_init() at the start of the
-     * custom initialization function set here.
+     * This function should init the device driver or MAC underlying MAC layer.
+     * This is called right before the interface's thread starts receiving
+     * messages. It is not necessary to lock the interface's mutex
+     * gnrc_netif_t::mutex, since it is already locked. Set to @ref
+     * gnrc_netif_default_init() if you do not need any special initialization.
+     * If you do need special initialization, it is recommended to call @ref
+     * gnrc_netif_default_init() at the start of the custom initialization
+     * function set here. This function MUST call @ref netif_register if the
+     * initialization is successful.
+     *
+     * @return 0 if the initialization of the device or MAC layer was
+     * successful
+     * @return negative errno on error.
      */
-    void (*init)(gnrc_netif_t *netif);
+    int (*init)(gnrc_netif_t *netif);
 
     /**
      * @brief   Send a @ref net_gnrc_pkt "packet" over the network interface
@@ -330,7 +353,7 @@ unsigned gnrc_netif_numof(void);
  */
 static inline bool gnrc_netif_highlander(void)
 {
-    return IS_ACTIVE(GNRC_NETIF_SINGLE);
+    return IS_USED(MODULE_GNRC_NETIF_SINGLE);
 }
 
 /**
@@ -405,7 +428,7 @@ static inline int gnrc_netif_ipv6_addrs_get(const gnrc_netif_t *netif,
  * @return  -ENOTSUP, if @p netif doesn't support IPv6.
  */
 static inline int gnrc_netif_ipv6_addr_add(const gnrc_netif_t *netif,
-                                           ipv6_addr_t *addr, unsigned pfx_len,
+                                           const ipv6_addr_t *addr, unsigned pfx_len,
                                            uint8_t flags)
 {
     assert(netif != NULL);
@@ -430,7 +453,7 @@ static inline int gnrc_netif_ipv6_addr_add(const gnrc_netif_t *netif,
  * @return  -ENOTSUP, if @p netif doesn't support IPv6.
  */
 static inline int gnrc_netif_ipv6_addr_remove(const gnrc_netif_t *netif,
-                                              ipv6_addr_t *addr)
+                                              const ipv6_addr_t *addr)
 {
     assert(netif != NULL);
     assert(addr != NULL);
@@ -516,11 +539,12 @@ static inline int gnrc_netif_ipv6_group_leave(const gnrc_netif_t *netif,
 /**
  * @brief   Default operation for gnrc_netif_ops_t::init()
  *
- * @note    Can also be used to be called *before* a custom operation.
+ * @note    Can also be used to be called *before* a custom operation. This
+ *          function calls @ref netif_register internally.
  *
  * @param[in] netif     The network interface.
  */
-void gnrc_netif_default_init(gnrc_netif_t *netif);
+int gnrc_netif_default_init(gnrc_netif_t *netif);
 
 /**
  * @brief   Default operation for gnrc_netif_ops_t::get()
@@ -550,7 +574,22 @@ int gnrc_netif_set_from_netdev(gnrc_netif_t *netif,
                                const gnrc_netapi_opt_t *opt);
 
 /**
+ * @brief Gets an interface by the netdev type (and index)
+ *
+ * @pre The netdev has been registered with @ref netdev_register
+ *
+ * @param[in]  type         driver type of the netdev, can be @ref NETDEV_ANY
+ * @param[in]  index        index of the netdev, can be @ref NETDEV_INDEX_ANY
+ *
+ * @return  The network interface that has a netdev of matching type and index
+ *          NULL if no matching interface could be found
+ */
+gnrc_netif_t *gnrc_netif_get_by_type(netdev_type_t type, uint8_t index);
+
+/**
  * @brief   Converts a hardware address to a human readable string.
+ *
+ * @note    Compatibility wrapper for @see l2util_addr_to_str
  *
  * @details The format will be like `xx:xx:xx:xx` where `xx` are the bytes
  *          of @p addr in hexadecimal representation.
@@ -565,11 +604,16 @@ int gnrc_netif_set_from_netdev(gnrc_netif_t *netif,
  *
  * @return  @p out.
  */
-char *gnrc_netif_addr_to_str(const uint8_t *addr, size_t addr_len, char *out);
+static inline char *gnrc_netif_addr_to_str(const uint8_t *addr, size_t addr_len, char *out)
+{
+    return l2util_addr_to_str(addr, addr_len, out);
+}
 
 /**
  * @brief   Parses a string of colon-separated hexadecimals to a hardware
  *          address.
+ *
+ * @note    Compatibility wrapper for @see l2util_addr_from_str
  *
  * @details The input format must be like `xx:xx:xx:xx` where `xx` will be the
  *          bytes of @p addr in hexadecimal representation.
@@ -585,7 +629,10 @@ char *gnrc_netif_addr_to_str(const uint8_t *addr, size_t addr_len, char *out);
  * @return  Actual length of @p out on success.
  * @return  0, on failure.
  */
-size_t gnrc_netif_addr_from_str(const char *str, uint8_t *out);
+static inline size_t gnrc_netif_addr_from_str(const char *str, uint8_t *out)
+{
+    return l2util_addr_from_str(str, out);
+}
 
 /**
  * @brief   Send a GNRC packet via a given @ref gnrc_netif_t interface.
@@ -616,6 +663,23 @@ static inline msg_bus_t* gnrc_netif_get_bus(gnrc_netif_t *netif,
     assert(type < GNRC_NETIF_BUS_NUMOF);
     return &netif->bus[type];
 }
+
+/**
+ * @brief   Wait for a global address to become available.
+ *          This function blocks until a valid global address has been
+ *          configured, e.g. by receiving a router advertisement or via DHCPv6.
+ *
+ *          Requires the `gnrc_netif_bus` module.
+ *
+ * @param netif         pointer to the interface
+ *                      May be NULL, then this checks for a global address
+ *                      on *any* interface.
+ * @param timeout_ms    Time to wait for an address to become available, in ms.
+ *
+ * @return              true if a global address is configured
+ */
+bool gnrc_netif_ipv6_wait_for_global_address(gnrc_netif_t *netif,
+                                             uint32_t timeout_ms);
 #endif /* MODULE_GNRC_NETIF_BUS */
 
 #ifdef __cplusplus

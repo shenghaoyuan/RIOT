@@ -1,0 +1,410 @@
+00025180 00000014 T abort	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdlib.h:69
+00008260 00000630 T __adddf3	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:91
+00026748 00000016 T __aeabi_cdcmpeq	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1205
+00026748 00000016 T __aeabi_cdcmple	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1205
+00026732 00000032 T __aeabi_cdrcmple	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1192
+00026908 00000078 T __aeabi_d2iz	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1344
+00008260 00000630 T __aeabi_dadd	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:91
+00026764 00000018 T __aeabi_dcmpeq	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1228
+00026824 00000018 T __aeabi_dcmpge	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1277
+00026844 00000018 T __aeabi_dcmpgt	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1293
+00026804 00000018 T __aeabi_dcmple	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1261
+00026784 00000018 T __aeabi_dcmplt	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1245
+00026864 00000044 T __aeabi_dcmpun	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1315
+00026128 00000464 T __aeabi_ddiv	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:890
+00025532 00000596 T __aeabi_dmul	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:637
+00008248 T __aeabi_drsub	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:77
+00008256 00000634 T __aeabi_dsub	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:83
+00008960 00000066 T __aeabi_f2d	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:501
+00008924 00000034 T __aeabi_i2d	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:471
+00009892 00000002 W __aeabi_idiv0	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/lib1funcs.S:1461
+00009044 00000090 T __aeabi_l2d	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:561
+00009892 00000002 W __aeabi_ldiv0	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/lib1funcs.S:1461
+00008892 00000030 T __aeabi_ui2d	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:443
+00009028 00000106 T __aeabi_ul2d	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:541
+00009136 T __aeabi_uldivmod	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/bpabi.S:254
+00023000 00000088 T __any_on	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:1014
+00025072 00000042 T __ascii_mbtowc	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mbtowc_r.c:21
+00025152 00000026 T __ascii_wctomb	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/wctomb_r.c:19
+00024264 00000010 T __assert	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/assert.h:39
+00027341 00000018 T assert_crash_message
+00024204 00000060 T __assert_func	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/assert.h:41
+00000548 00000014 T auto_init	/home/shyuan/GitHub/RIOT/sys/auto_init/auto_init.c:29
+00007300 00000120 T auto_init_gpio	/home/shyuan/GitHub/RIOT/drivers/saul/init_devs/auto_init_saul_gpio.c:56
+00007420 00000032 T auto_init_nrf_temperature	/home/shyuan/GitHub/RIOT/drivers/saul/init_devs/auto_init_saul_nrf_temperature.c:42
+00007452 00000124 T auto_init_saul_pwm	/home/shyuan/GitHub/RIOT/drivers/saul/init_devs/auto_init_saul_pwm.c:127
+00022372 00000184 T __b2d	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:678
+00000000 A _backup_ram_len
+00000000 A _backup_ram_start_addr
+00020472 00000128 T _Balloc	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:97
+00020600 00000076 T _Bfree	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:136
+00000562 00000018 T board_init	/home/shyuan/GitHub/RIOT/boards/common/nrf52xxxdk/board.c:24
+00027007 00000176 T bpf_input_bin	/home/shyuan/GitHub/RIOT/tests/ben_bpf_bitswap_opt/main.c:16
+00003244 00002000 T bpf_interpreter	/home/shyuan/GitHub/RIOT/external/gen_bpf_opt/interpreter.c:1229
+536871940 00000512 b _bpf_stack	/home/shyuan/GitHub/RIOT/tests/ben_bpf_bitswap_opt/main.c:42
+00002112 00000016 T bus_fault_default	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:474
+00023088 00000028 T _calloc_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/malloc.h:66
+00003144 00000100 T check_mem_aux	/home/shyuan/GitHub/RIOT/external/gen_bpf_opt/interpreter.c:586
+00019720 00000020 T _cleanup	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/findfp.c:234
+00019280 00000012 T _cleanup_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/findfp.c:204
+00002812 00000002 T clock_init_hf	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/clock.c:45
+00005426 00000010 T _close_r	/usr/include/newlib/reent.h:139
+00026608 00000122 T __cmpdf2	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1103
+00022928 00000070 T __copybits	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:986
+00000832 00000080 T core_panic	/home/shyuan/GitHub/RIOT/core/include/panic.h:77
+00001632 00000064 T cortexm_init	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/cortexm_init.c:71
+00003004 00000028 t cortexm_isr_end	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/include/cpu.h:176
+00000000 00000064 T cortex_vector_base	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:503
+00002880 00000124 T cpu_init	/home/shyuan/GitHub/RIOT/cpu/nrf52/cpu.c:40
+00001884 00000024 T cpu_switch_context_exit	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/thread_arch.c:283
+536874692 00000004 b crashed	/home/shyuan/GitHub/RIOT/core/panic.c:49
+536874948 00000048 b ctx	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/timer.c:40
+536871424 00000003 D ctx	/home/shyuan/GitHub/RIOT/tests/ben_bpf_bitswap_opt/main.c:50
+00029184 00000257 T _ctype_
+00011048 00000250 T __cvt	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/nano-vfprintf_float.c:68
+00022556 00000212 T __d2b	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:754
+00002144 00000016 T debug_mon_default	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:484
+00028432 00000012 T dimmer_saul_driver	/home/shyuan/GitHub/RIOT/drivers/saul/pwm_saul.c:96
+00026128 00000464 T __divdf3	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:890
+00015044 00003800 T _dtoa_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdlib.h:292
+00005472 00000004 T dummy_handler	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:28
+00002160 00000016 T dummy_handler_default	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:490
+00000000 ? _ebackup_bss	/home/shyuan/GitHub/RIOT/sys/newlib_syscalls_default/syscalls.c:91
+00000000 ? _ebackup_data
+536875180 B _ebss
+00029444 T _efixed
+537133056 B _eheap
+00000000 ? _eheap1	/home/shyuan/GitHub/RIOT/sys/newlib_syscalls_default/syscalls.c:92
+00029968 ? _end_fw
+00026608 00000122 T __eqdf2	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1103
+537133056 B _eram
+536871940 D _erelocate
+01048576 B _erom
+536871424 B _estack
+00029452 B _etext
+00005304 00000020 T _exit	/usr/include/newlib/sys/unistd.h:18
+00011300 00000140 T __exponent	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/nano-vfprintf_float.c:128
+00008960 00000066 T __extendsfdf2	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:501
+536875180 B _ezero
+00019240 00000036 T fflush	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdio.h:192
+00019144 00000096 T _fflush_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdio.h:411
+00005302 00000002 T _fini	/home/shyuan/GitHub/RIOT/sys/newlib_syscalls_default/syscalls.c:161
+00029444 T __fini_array_end
+00029444 T __fini_array_start
+00019832 00000040 T fiprintf	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/fprintf.c:49
+00019804 00000028 T _fiprintf_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/fprintf.c:28
+00026908 00000078 T __fixdfsi	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1344
+00002032 t fix_msp	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:243
+00009044 00000090 T __floatdidf	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:561
+00008924 00000034 T __floatsidf	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:471
+00009028 00000106 T __floatundidf	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:541
+00008892 00000030 T __floatunsidf	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:443
+00019276 00000004 t __fp_lock	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/findfp.c:333
+00019764 00000020 T __fp_lock_all	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/findfp.c:352
+00019832 00000040 T fprintf	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdio.h:196
+00019804 00000028 T _fprintf_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdio.h:430
+00019292 00000004 t __fp_unlock	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/findfp.c:229
+00019784 00000020 T __fp_unlock_all	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/findfp.c:360
+00009984 00000016 T free	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/malloc.h:45
+00010676 00000172 T _free_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/malloc.h:50
+00005446 00000010 T _fstat_r	/usr/include/newlib/reent.h:143
+00002816 00000064 t ftpan_32	/home/shyuan/GitHub/RIOT/cpu/nrf52/cpu.c:87
+00002816 00000064 t ftpan_36	/home/shyuan/GitHub/RIOT/cpu/nrf52/cpu.c:89
+00002816 00000064 t ftpan_37	/home/shyuan/GitHub/RIOT/cpu/nrf52/cpu.c:89
+00019872 00000074 T _fwalk	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/fwalk.c:31
+00019948 00000082 T _fwalk_reent	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/fwalk.c:57
+01048576 A _fw_rom_length
+00026592 00000138 T __gedf2	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1092
+00005388 00000012 T _getpid_r	/usr/include/newlib/reent.h:144
+00028460 00000004 T _global_impure_ptr
+536871572 00000364 D __global_locale	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/locale/../../../../../../../../newlib/libc/locale/locale.c:243
+00005476 00000064 T gpio_init	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/gpio.c:106
+00028192 00000012 T gpio_in_saul_driver	/home/shyuan/GitHub/RIOT/drivers/saul/gpio_saul.c:56
+00028204 00000012 T gpio_out_saul_driver	/home/shyuan/GitHub/RIOT/drivers/saul/gpio_saul.c:50
+00005540 00000052 T gpio_read	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/gpio.c:125
+00005592 00000044 T gpio_write	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/gpio.c:150
+00026592 00000138 T __gtdf2	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1092
+00002012 00000068 T hard_fault_default	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:240
+00002336 00000476 T hard_fault_handler	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:317
+536871428 00000004 d heap_top	/home/shyuan/GitHub/RIOT/sys/newlib_syscalls_default/syscalls.c:106
+00021008 00000064 T __hi0bits	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:232
+00021168 00000044 T __i2b	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:316
+536871476 00000096 d impure_data	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/reent/../../../../../../../../newlib/libc/reent/impure.c:23
+536871472 00000004 D _impure_ptr
+00005300 00000002 T _init	/home/shyuan/GitHub/RIOT/sys/newlib_syscalls_default/syscalls.c:152
+00029444 T __init_array_end
+00029444 T __init_array_start
+00025496 00000020 T _init_signal	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/signal/../../../../../../../../newlib/libc/signal/signal.c:210
+00025236 00000010 T _init_signal_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/signal/../../../../../../../../newlib/libc/signal/signal.c:92
+00025196 00000038 t _init_signal_r.part.0	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/signal/../../../../../../../../newlib/libc/signal/signal.c:92
+00013780 00000056 T iprintf	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/printf.c:49
+00013732 00000046 T _iprintf_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/printf.c:28
+536874912 00000016 b _irq	/home/shyuan/GitHub/RIOT/cpu/nrf52/spi_twi_irq.c:59
+536874928 00000016 b _irq_arg	/home/shyuan/GitHub/RIOT/cpu/nrf52/spi_twi_irq.c:60
+00005736 00000156 t irq_handler	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/timer.c:165
+00006256 00000084 t irq_handler	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/uart.c:375
+00005456 00000016 T _isatty_r	/usr/include/newlib/reent.h:145
+00005472 00000004 W isr_ccm_aar	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_cryptocell	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+536874996 00000016 b isr_ctx	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/uart.c:65
+00005472 00000004 W isr_ecb	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_fpu	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_gpiote	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_i2s	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_lpcomp	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_mwu	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_nfct	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_pdm	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00001908 00000076 T isr_pendsv	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/thread_arch.c:294
+00005472 00000004 W isr_power_clock	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_pwm0	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_pwm1	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_pwm2	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_pwm3	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_qdec	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_qspi	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_radio	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_rng	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_rtc0	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_rtc1	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_rtc2	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_saadc	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_spi0	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00003032 00000028 T isr_spi0_twi0	/home/shyuan/GitHub/RIOT/cpu/nrf52/spi_twi_irq.c:143
+00005472 00000004 W isr_spi1_twi0	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00003060 00000028 T isr_spi1_twi1	/home/shyuan/GitHub/RIOT/cpu/nrf52/spi_twi_irq.c:149
+00003088 00000028 T isr_spi2	/home/shyuan/GitHub/RIOT/cpu/nrf52/spi_twi_irq.c:156
+00003116 00000028 T isr_spi3	/home/shyuan/GitHub/RIOT/cpu/nrf52/spi_twi_irq.c:164
+536870912 00000512 B isr_stack	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:81
+00001984 00000016 T isr_svc	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/thread_arch.c:506
+00005472 00000004 W isr_swi0	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_swi1	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_swi2	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_swi3	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_swi4	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_swi5	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00002160 00000016 W isr_systick	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:491
+00005472 00000004 W isr_temp	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00005472 00000004 W isr_timer0	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00006232 00000006 T isr_timer1	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/timer.c:183
+00006238 00000006 T isr_timer2	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/timer.c:190
+00006244 00000006 T isr_timer3	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/timer.c:197
+00006250 00000006 T isr_timer4	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/timer.c:204
+00005472 00000004 W isr_twi0	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00006924 00000006 T isr_uart0	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/uart.c:488
+00006930 00000006 T isr_uarte1	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/uart.c:495
+00005472 00000004 W isr_usbd	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00000000 T _isr_vectors	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/cortexm_init.c:26
+00005472 00000004 W isr_wdt	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:29
+00000604 00000052 T kernel_init	/home/shyuan/GitHub/RIOT/core/init.c:74
+00005400 00000010 W _kill_r	/usr/include/newlib/reent.h:146
+00026600 00000130 T __ledf2	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1097
+00009896 00000072 T __libc_init_array	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/misc/../../../../../../../../newlib/libc/misc/init.c:30
+00021072 00000096 T __lo0bits	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:266
+00020044 00000008 T localeconv	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/locale.h:83
+00020032 00000004 T __localeconv_l	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/locale/../../../../../../../../newlib/libc/locale/localeconv.c:6
+00020036 00000008 T _localeconv_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/locale.h:72
+536874944 00000004 b _lock	/home/shyuan/GitHub/RIOT/sys/malloc_thread_safe/malloc_wrappers.c:27
+00005436 00000010 T _lseek_r	/usr/include/newlib/reent.h:148
+00021740 00000200 T __lshift	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:458
+00026600 00000130 T __ltdf2	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1097
+00000256 00000292 T main	/home/shyuan/GitHub/RIOT/tests/ben_bpf_bitswap_opt/main.c:75
+536873156 00001536 b main_stack	/home/shyuan/GitHub/RIOT/core/init.c:60
+00000580 00000024 t main_trampoline	/home/shyuan/GitHub/RIOT/core/init.c:43
+00009968 00000016 T malloc	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/malloc.h:37
+536875172 00000004 B __malloc_free_list
+00020464 00000002 T __malloc_lock	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/malloc.h:136
+00010848 00000200 T _malloc_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/malloc.h:42
+536875176 00000004 B __malloc_sbrk_start
+00020468 00000002 T __malloc_unlock	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mlock.c:46
+00025116 00000016 T _malloc_usable_size_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/malloc.h:106
+536871937 00000001 D max_threads	/home/shyuan/GitHub/RIOT/core/sched.c:61
+00025052 00000020 T _mbtowc_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdlib.h:112
+00021940 00000056 T __mcmp	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:518
+00021996 00000296 T __mdiff	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:548
+00020304 T memchr	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/machine/arm/../../../../../../../../../newlib/libc/machine/arm/memchr.S:291
+00010000 00000308 T memcpy	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/machine/arm/../../../../../../../../../newlib/libc/machine/arm/memcpy-armv7m.S:96
+00002096 00000016 T mem_manage_default	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:469
+00010308 00000206 T memmove	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/string.h:32
+00010516 00000160 T memset	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/string.h:33
+00028992 00000040 T __mprec_bigtens
+00022864 00000064 T _mprec_log10	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:972
+00028752 00000200 T __mprec_tens
+00028952 00000040 T __mprec_tinytens
+00001728 00000024 T mpu_configure	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/mpu.c:59
+00001696 00000032 T mpu_enable	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/mpu.c:33
+00027184 00000016 t mr_ctx	/home/shyuan/GitHub/RIOT/tests/ben_bpf_bitswap_opt/main.c:63
+00027200 00000016 t mr_stack	/home/shyuan/GitHub/RIOT/tests/ben_bpf_bitswap_opt/main.c:58
+00025532 00000596 T __muldf3	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:637
+00020676 00000160 T __multadd	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:147
+00021212 00000332 T __multiply	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:327
+00000656 00000104 T mutex_lock	/home/shyuan/GitHub/RIOT/core/mutex.c:72
+00000760 00000068 T mutex_unlock	/home/shyuan/GitHub/RIOT/core/mutex.c:124
+536872452 00000704 B mycache	/home/shyuan/GitHub/RIOT/tests/ben_bpf_bitswap_opt/main.c:70
+00026608 00000122 T __nedf2	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1103
+00002080 00000016 T nmi_default	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:212
+536875180 ? __noinit_end
+536875180 ? __noinit_start
+00007772 00000028 t _now_next	/home/shyuan/GitHub/RIOT/sys/ztimer/core.c:280
+00028120 00000012 T nrf_temperature_saul_driver	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/temperature.c:64
+00028132 00000004 T nrf_temperature_saul_info	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/temperature.c:60
+00002056 t out	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:243
+00028736 00000012 t p05.7456
+00000828 00000002 W panic_app	/home/shyuan/GitHub/RIOT/core/panic.c:53
+00001752 00000028 T panic_arch	/home/shyuan/GitHub/RIOT/core/include/panic.h:85
+00006936 00000002 T periph_init	/home/shyuan/GitHub/RIOT/drivers/periph_common/init.c:54
+00005636 00000048 T pm_off	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/pm.c:31
+00002178 00000002 W post_startup
+00021544 00000196 T __pow5mult	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:419
+00029444 T __preinit_array_end
+00029444 T __preinit_array_start
+00002176 00000002 W pre_startup	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:86
+00013780 00000056 T printf	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdio.h:200
+00012768 00000298 T _printf_common	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/nano-vfprintf_i.c:49
+00011440 00001328 W _printf_float	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/nano-vfprintf_float.c:165
+00013068 00000664 T _printf_i	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/nano-vfprintf_i.c:108
+00013732 00000046 T _printf_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdio.h:459
+00014052 00000016 T puts	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdio.h:221
+00013836 00000216 T _puts_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdio.h:465
+00028184 00000008 t pwm_config	/home/shyuan/GitHub/RIOT/boards/common/nrf52xxxdk/include/periph_conf_common.h:40
+00006976 00000192 T pwm_init	/home/shyuan/GitHub/RIOT/cpu/nrf52/periph/pwm.c:58
+536875014 00000008 b pwm_seq	/home/shyuan/GitHub/RIOT/cpu/nrf52/periph/pwm.c:48
+00007168 00000068 T pwm_set	/home/shyuan/GitHub/RIOT/cpu/nrf52/periph/pwm.c:150
+00014752 00000292 t quorem	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/dtoa.c:36
+00025464 00000016 T raise	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/signal.h:29
+00025300 00000084 T _raise_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/signal.h:25
+00262144 A _ram_length
+536870912 A _ram_start_addr
+00022768 00000096 T __ratio	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:907
+00007264 00000036 t read	/home/shyuan/GitHub/RIOT/drivers/saul/gpio_saul.c:28
+00005410 00000008 T _read_r	/usr/include/newlib/reent.h:151
+00005684 00000052 t _read_temperature	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/temperature.c:49
+00023116 00000076 T _realloc_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/malloc.h:58
+00002180 00000156 T reset_handler_default	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:97
+00001956 t restore_context	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/thread_arch.c:295
+01048576 A _rom_length
+00000000 A _rom_offset
+00000000 A _rom_start_addr
+536874696 00000004 b runqueue_bitcache	/home/shyuan/GitHub/RIOT/core/sched.c:75
+536875012 00000002 b rx_buf	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/uart.c:66
+00020836 00000172 T __s2b	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:193
+00028252 00000048 t saul_gpio_params	/home/shyuan/GitHub/RIOT/boards/common/nrf52xxxdk/include/gpio_params.h:33
+00007576 00000018 T saul_init_devs	/home/shyuan/GitHub/RIOT/drivers/saul/init_devs/init.c:28
+00007728 00000006 T saul_notsup	/home/shyuan/GitHub/RIOT/drivers/saul/saul.c:25
+00028384 00000048 t saul_pwm_dimmer_params	/home/shyuan/GitHub/RIOT/boards/common/nrf52xxxdk/include/pwm_params.h:34
+536875168 00000004 B saul_reg
+00007692 00000036 T saul_reg_add	/home/shyuan/GitHub/RIOT/sys/saul_reg/saul_reg.c:33
+536875024 00000064 b saul_reg_entries	/home/shyuan/GitHub/RIOT/drivers/saul/init_devs/auto_init_saul_gpio.c:44
+536875104 00000064 b saul_reg_entries_dimmer	/home/shyuan/GitHub/RIOT/drivers/saul/init_devs/auto_init_saul_pwm.c:68
+536875088 00000016 b saul_reg_entry	/home/shyuan/GitHub/RIOT/drivers/saul/init_devs/auto_init_saul_nrf_temperature.c:30
+00000000 ? _sbackup_bss	/home/shyuan/GitHub/RIOT/sys/newlib_syscalls_default/syscalls.c:91
+00000000 ? _sbackup_data
+00029968 A _sbackup_data_load
+00005324 00000064 T _sbrk_r	/usr/include/newlib/reent.h:153
+536871940 B _sbss
+536874700 00000002 B sched_active_pid	/home/shyuan/GitHub/RIOT/core/sched.c:56
+536874704 00000004 B sched_active_thread	/home/shyuan/GitHub/RIOT/core/sched.c:71
+00002000 00000012 T sched_arch_idle	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/thread_arch.c:512
+536874708 00000004 B sched_context_switch_request
+536874712 00000004 B sched_num_threads
+00000948 00000124 T sched_run	/home/shyuan/GitHub/RIOT/core/sched.c:141
+536874716 00000064 B sched_runqueues
+00001072 00000132 T sched_set_status	/home/shyuan/GitHub/RIOT/core/sched.c:221
+00001204 00000060 T sched_switch	/home/shyuan/GitHub/RIOT/core/sched.c:262
+00001264 00000060 T sched_task_exit	/home/shyuan/GitHub/RIOT/core/sched.c:288
+536874780 00000132 B sched_threads
+00024196 00000008 T __sclose	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/stdio.c:125
+00024096 00000004 T __seofread	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/stdio.c:65
+00028636 00000032 T __sf_fake_stderr
+00028700 00000032 T __sf_fake_stdin
+00028668 00000032 T __sf_fake_stdout
+00000000 T _sfixed	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:56
+00018844 00000298 T __sflush_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/fflush.c:103
+00019296 00000046 T __sfmoreglue	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/findfp.c:126
+00019344 00000132 T __sfp	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/findfp.c:147
+00019748 00000002 T __sfp_lock_acquire	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/findfp.c:308
+00019752 00000002 T __sfp_lock_release	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/findfp.c:311
+00023192 00000058 t __sfputc_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/nano-vfprintf.c:392
+00023252 00000046 T __sfputs_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/nano-vfprintf.c:403
+00024276 00000776 T __sfvwrite_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/fvwrite.c:48
+536875180 B _sheap
+00000000 ? _sheap1	/home/shyuan/GitHub/RIOT/sys/newlib_syscalls_default/syscalls.c:91
+00025480 00000016 T signal	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/signal.h:28
+00025248 00000052 T _signal_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/signal.h:24
+00025516 00000016 T __sigtramp	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/signal/../../../../../../../../newlib/libc/signal/signal.c:216
+00025384 00000078 T __sigtramp_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/signal/../../../../../../../../newlib/libc/signal/signal.c:166
+00019740 00000008 T __sinit	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/sys/reent.h:173
+00019756 00000002 T __sinit_lock_acquire	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/findfp.c:311
+00019760 00000002 T __sinit_lock_release	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/findfp.c:311
+00019476 00000244 t __sinit.part.0	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/sys/reent.h:173
+00020144 00000148 T __smakebuf_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/makebuf.c:38
+00023300 00000026 T __sprint_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/nano-vfprintf.c:348
+536870912 B _sram
+00024060 00000034 T __sread	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/stdio.c:33
+536871424 D _srelocate
+00000000 B _srom
+00024164 00000032 T __sseek	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/stdio.c:105
+536870912 B _sstack
+00007734 00000014 T stdio_init	/home/shyuan/GitHub/RIOT/sys/stdio_uart/stdio_uart.c:50
+00007748 00000006 T stdio_read	/home/shyuan/GitHub/RIOT/sys/stdio_uart/stdio_uart.c:77
+00007754 00000018 T stdio_write	/home/shyuan/GitHub/RIOT/sys/stdio_uart/stdio_uart.c:88
+00014080 00000220 T strlen	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/machine/arm/../../../../../../../../../newlib/libc/machine/arm/strlen-armv7.S:103
+00008256 00000634 T __subdf3	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:83
+00014476 00000016 T __swbuf	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/wbuf.c:90
+00014300 00000176 T __swbuf_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdio.h:578
+00020052 00000090 T __swhatbuf_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/makebuf.c:78
+00024100 00000062 T __swrite	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/stdio.c:74
+00014492 00000256 T __swsetup_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/wsetup.c:33
+536871940 B _szero
+00029444 R __tbss_end
+00000000 A __tbss_size
+536871936 00000001 D _tcb_name_offset	/home/shyuan/GitHub/RIOT/core/sched.c:67
+00029444 R __tdata_end
+00000000 A __tdata_size
+00029444 A __tdata_source
+00029444 R __tdata_start
+00002038 t test_sp	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:243
+00001352 00000048 T thread_add_to_list	/home/shyuan/GitHub/RIOT/core/thread.c:154
+00001400 00000232 T thread_create	/home/shyuan/GitHub/RIOT/core/thread.c:193
+00001324 00000028 T thread_getname	/home/shyuan/GitHub/RIOT/core/thread.c:45
+00001780 00000104 T thread_stack_init	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/thread_arch.c:140
+00006112 00000088 T timer_clear	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/timer.c:133
+00028136 00000032 t timer_config	/home/shyuan/GitHub/RIOT/boards/common/nrf52/include/cfg_timer_default.h:33
+00005892 00000144 T timer_init	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/timer.c:47
+00006200 00000032 T timer_read	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/timer.c:149
+00006938 00000036 T timer_set	/home/shyuan/GitHub/RIOT/drivers/periph_common/timer.c:25
+00006036 00000076 T timer_set_absolute	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/timer.c:96
+00000000 A __tls_size
+00028168 00000016 t uart_config	/home/shyuan/GitHub/RIOT/boards/nrf52840dk/include/periph_conf.h:55
+00006340 00000440 T uart_init	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/uart.c:101
+00006780 00000144 T uart_write	/home/shyuan/GitHub/RIOT/cpu/nrf5x_common/periph/uart.c:267
+00009184 00000706 T __udivmoddi4	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/libgcc2.c:1015
+00022292 00000080 T __ulp	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdlib/../../../../../../../../newlib/libc/stdlib/mprec.c:632
+00026864 00000044 T __unorddf2	/build/gcc-arm-none-eabi-Gl9kT9/gcc-arm-none-eabi-9-2019-q4/build/arm-none-eabi/thumb/v7e-m+fp/hard/libgcc/../../../../../../libgcc/config/arm/ieee754-df.S:1315
+00000912 00000036 t _unschedule	/home/shyuan/GitHub/RIOT/core/sched.c:116
+00002128 00000016 T usage_fault_default	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:479
+00002052 t use_psp	/home/shyuan/GitHub/RIOT/cpu/cortexm_common/vectors_cortexm.c:243
+00000064 00000192 T vector_cpu	/home/shyuan/GitHub/RIOT/cpu/nrf52/vectors/vectors_nrf52840xxaa.c:82
+00024036 00000024 T vfiprintf	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/nano-vfprintf.c:443
+00023328 00000708 T _vfiprintf_r	/build/newlib-CVVEyx/newlib-3.3.0/build_nano/arm-none-eabi/thumb/v7e-m+fp/hard/newlib/libc/stdio/../../../../../../../../newlib/libc/stdio/nano-vfprintf.c:472
+00024036 00000024 T vfprintf	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdio.h:206
+00023328 00000708 T _vfprintf_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdio.h:503
+00025132 00000020 T _wctomb_r	/build/newlib-CVVEyx/newlib-3.3.0/newlib/libc/include/stdlib.h:114
+00005244 00000056 T __wrap_malloc	/home/shyuan/GitHub/RIOT/sys/malloc_thread_safe/malloc_wrappers.c:29
+00007236 00000028 t write	/home/shyuan/GitHub/RIOT/drivers/saul/gpio_saul.c:40
+00007596 00000096 t write_dimmer	/home/shyuan/GitHub/RIOT/drivers/saul/pwm_saul.c:77
+00005418 00000008 T _write_r	/usr/include/newlib/reent.h:158
+00007972 00000148 T ztimer_handler	/home/shyuan/GitHub/RIOT/sys/ztimer/core.c:338
+00008120 00000024 T ztimer_init	/home/shyuan/GitHub/RIOT/sys/ztimer/init.c:215
+00007904 00000016 t ztimer_now	/home/shyuan/GitHub/RIOT/sys/include/ztimer.h:484
+00007840 00000064 T _ztimer_now_extend	/home/shyuan/GitHub/RIOT/sys/ztimer/core.c:172
+536871432 00000040 d _ztimer_periph_timer	/home/shyuan/GitHub/RIOT/sys/ztimer/init.c:149
+00008144 00000004 t _ztimer_periph_timer_callback	/home/shyuan/GitHub/RIOT/sys/ztimer/periph_timer.c:75
+00008148 00000008 t _ztimer_periph_timer_cancel	/home/shyuan/GitHub/RIOT/sys/ztimer/periph_timer.c:68
+00008180 00000068 T ztimer_periph_timer_init	/home/shyuan/GitHub/RIOT/sys/ztimer/periph_timer.c:87
+00008156 00000006 t _ztimer_periph_timer_now	/home/shyuan/GitHub/RIOT/sys/ztimer/periph_timer.c:61
+00028448 00000012 t _ztimer_periph_timer_ops	/home/shyuan/GitHub/RIOT/sys/ztimer/periph_timer.c:81
+00008162 00000016 t _ztimer_periph_timer_set	/home/shyuan/GitHub/RIOT/sys/ztimer/periph_timer.c:38
+00007800 00000040 t _ztimer_update	/home/shyuan/GitHub/RIOT/sys/ztimer/core.c:306
+00007920 00000050 t _ztimer_update_head_offset	/home/shyuan/GitHub/RIOT/sys/ztimer/core.c:194
+00028444 00000004 T ZTIMER_USEC

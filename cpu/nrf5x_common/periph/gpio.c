@@ -28,6 +28,8 @@
  * @}
  */
 
+#include <assert.h>
+
 #include "cpu.h"
 #include "periph/gpio.h"
 #include "periph_cpu.h"
@@ -35,6 +37,16 @@
 
 #define PORT_BIT            (1 << 5)
 #define PIN_MASK            (0x1f)
+
+/* Compatibility wrapper defines for nRF9160 */
+#ifdef NRF_P0_S
+#define NRF_P0 NRF_P0_S
+#endif
+
+#ifdef NRF_GPIOTE0_S
+#define NRF_GPIOTE NRF_GPIOTE0_S
+#define GPIOTE_IRQn GPIOTE0_IRQn
+#endif
 
 #ifdef MODULE_PERIPH_GPIO_IRQ
 
@@ -71,11 +83,11 @@ static inline NRF_GPIO_Type *port(gpio_t pin)
 #if (CPU_FAM_NRF51)
     (void) pin;
     return NRF_GPIO;
-#elif defined(CPU_MODEL_NRF52832XXAA)
+#elif defined(NRF_P1)
+    return (pin & PORT_BIT) ? NRF_P1 : NRF_P0;
+#else
     (void) pin;
     return NRF_P0;
-#else
-    return (pin & PORT_BIT) ? NRF_P1 : NRF_P0;
 #endif
 }
 
@@ -84,7 +96,7 @@ static inline NRF_GPIO_Type *port(gpio_t pin)
  */
 static inline int pin_num(gpio_t pin)
 {
-#ifdef CPU_MODEL_NRF52840XXAA
+#if GPIO_COUNT > 1
     return (pin & PIN_MASK);
 #else
     return (int)pin;
@@ -182,7 +194,7 @@ int gpio_init_int(gpio_t pin, gpio_mode_t mode, gpio_flank_t flank,
     /* configure the GPIOTE channel: set even mode, pin and active flank */
     NRF_GPIOTE->CONFIG[_pin_index] = (GPIOTE_CONFIG_MODE_Event |
                              (pin_num(pin) << GPIOTE_CONFIG_PSEL_Pos) |
-#ifdef CPU_MODEL_NRF52840XXAA
+#if GPIO_COUNT > 1
                              ((pin & PORT_BIT) << 8) |
 #endif
                              (flank << GPIOTE_CONFIG_POLARITY_Pos));

@@ -30,7 +30,7 @@
 #include "periph/i2c.h"
 #include "byteorder.h"
 
-#define ENABLE_DEBUG        (0)
+#define ENABLE_DEBUG        0
 #include "debug.h"
 
 /*
@@ -87,7 +87,6 @@ static int ina2xx_write_reg(const ina2xx_t *dev, uint8_t reg, uint16_t in)
 
     return 0;
 }
-
 
 int ina2xx_init(ina2xx_t *dev, const ina2xx_params_t *params)
 {

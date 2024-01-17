@@ -21,23 +21,12 @@
 
 #include <inttypes.h>
 
+#include "periph_cpu_common.h"
 #include "cpu.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * @name    Power management configuration
- * @{
- */
-#define PROVIDES_PM_SET_LOWEST
-/** @} */
-
-/**
- * @brief   Length of the CPU_ID in octets
- */
-#define CPUID_LEN           (12U)
 
 #ifndef DOXYGEN
 /**
@@ -46,6 +35,11 @@ extern "C" {
 #define HAVE_GPIO_T
 typedef uint8_t gpio_t;
 #endif
+
+/**
+ * @brief   Length of the CPU_ID in octets
+ */
+#define CPUID_LEN           (12U)
 
 /**
  * @brief   Definition of a fitting UNDEF value
@@ -66,10 +60,10 @@ typedef uint8_t gpio_t;
  * @brief   Structure for UART configuration data
  */
 typedef struct {
-    uint32_t addr;          /**< UART control register address */
-    gpio_t rx;              /**< RX pin */
-    gpio_t tx;              /**< TX pin */
-    plic_source isr_num;    /**< ISR source number */
+    uint32_t addr;              /**< UART control register address */
+    gpio_t rx;                  /**< RX pin */
+    gpio_t tx;                  /**< TX pin */
+    irqn_t isr_num;             /**< ISR source number */
 } uart_conf_t;
 
 /**
@@ -144,8 +138,8 @@ typedef struct {
  */
 #define NWDT_TIME_LOWER_LIMIT           (1)
 /* Ensure the internal "count" variable stays within the uint32 bounds.
-  This variable corresponds to max_time * RTC_FREQ / MS_PER_SEC. On fe310,
-  RTC_FREQ is 32768Hz. The 15 right shift is equivalent to a division by RTC_FREQ.
+   This variable corresponds to max_time * RTC_FREQ / MS_PER_SEC. On fe310,
+   RTC_FREQ is 32768Hz. The 15 right shift is equivalent to a division by RTC_FREQ.
  */
 #define NWDT_TIME_UPPER_LIMIT           ((UINT32_MAX >> 15)  * MS_PER_SEC + 1)
 /** @} */
@@ -159,6 +153,29 @@ typedef struct {
  * @brief   WDT can be stopped
  */
 #define WDT_HAS_STOP                    (1)
+
+/**
+ * @name    RTT/RTC configuration
+ *
+ * @{
+ */
+#define RTT_INTR_PRIORITY   (2)
+
+#define RTT_MAX_VALUE       (0xffffffff)
+#define RTT_CLOCK_FREQUENCY (32768U)                /* in Hz */
+#define RTT_MAX_FREQUENCY   (RTT_CLOCK_FREQUENCY)   /* in Hz */
+#define RTT_MIN_FREQUENCY   (1U)                    /* in Hz */
+
+#ifndef RTT_FREQUENCY
+#define RTT_FREQUENCY       (RTT_MAX_FREQUENCY)     /* in Hz */
+#endif
+
+/**
+ * @brief   Initialization of the clock
+ */
+void fe310_clock_init(void);
+
+/** @} */
 
 #ifdef __cplusplus
 }

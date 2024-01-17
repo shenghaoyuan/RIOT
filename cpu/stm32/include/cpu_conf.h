@@ -21,34 +21,59 @@
 #ifndef CPU_CONF_H
 #define CPU_CONF_H
 
+#include <stdint.h>
 #include "cpu_conf_common.h"
 
 #if defined(CPU_LINE_STM32F030x4)
 #include "vendor/stm32f030x4.h"
+#elif defined(CPU_LINE_STM32MP157Cxx)
+#include "vendor/stm32mp157cxx_cm4.h"
 #elif CPU_FAM_STM32F0
 #include "stm32f0xx.h"
+#include "irqs/f0/irqs.h"
 #elif CPU_FAM_STM32F1
 #include "stm32f1xx.h"
+#include "irqs/f1/irqs.h"
 #elif CPU_FAM_STM32F2
 #include "stm32f2xx.h"
+#include "irqs/f2/irqs.h"
 #elif CPU_FAM_STM32F3
 #include "stm32f3xx.h"
+#include "irqs/f3/irqs.h"
 #elif CPU_FAM_STM32F4
 #include "stm32f4xx.h"
+#include "irqs/f4/irqs.h"
 #elif CPU_FAM_STM32F7
 #include "stm32f7xx.h"
+#include "irqs/f7/irqs.h"
 #elif CPU_FAM_STM32G0
 #include "stm32g0xx.h"
+#include "irqs/g0/irqs.h"
 #elif CPU_FAM_STM32G4
 #include "stm32g4xx.h"
+#include "irqs/g4/irqs.h"
 #elif CPU_FAM_STM32L0
 #include "stm32l0xx.h"
+#include "irqs/l0/irqs.h"
 #elif CPU_FAM_STM32L1
 #include "stm32l1xx.h"
+#include "irqs/l1/irqs.h"
 #elif CPU_FAM_STM32L4
 #include "stm32l4xx.h"
+#include "irqs/l4/irqs.h"
+#elif CPU_FAM_STM32L5
+#include "stm32l5xx.h"
+#include "irqs/l5/irqs.h"
+#elif CPU_FAM_STM32U5
+#include "stm32u5xx.h"
+#include "irqs/u5/irqs.h"
+#define NUM_HEAPS   2
 #elif CPU_FAM_STM32WB
 #include "stm32wbxx.h"
+#include "irqs/wb/irqs.h"
+#elif CPU_FAM_STM32WL
+#include "stm32wlxx.h"
+#include "irqs/wl/irqs.h"
 #else
 #error Not supported CPU family
 #endif
@@ -62,83 +87,32 @@ extern "C" {
  * @{
  */
 #define CPU_DEFAULT_IRQ_PRIO            (1U)
-#if defined(CPU_LINE_STM32F030x8)
-#define CPU_IRQ_NUMOF                   (29U)
-#elif defined(CPU_LINE_STM32F031x6) || defined(CPU_LINE_STM32F030x4)
-#define CPU_IRQ_NUMOF                   (28U)
-#elif defined(CPU_LINE_STM32F051x8) || defined(CPU_LINE_STM32F091xC)
-#define CPU_IRQ_NUMOF                   (31U)
-#elif defined (CPU_FAM_STM32F0)
-#define CPU_IRQ_NUMOF                   (32U)
-#elif defined(CPU_LINE_STM32F103xE)
-#define CPU_IRQ_NUMOF                   (60U)
-#elif defined (CPU_FAM_STM32F1)
-#define CPU_IRQ_NUMOF                   (43U)
-#elif defined (CPU_FAM_STM32F2)
-#define CPU_IRQ_NUMOF                   (81U)
-#elif defined(CPU_LINE_STM32F303xE)
-#define CPU_IRQ_NUMOF                   (85U)
-#elif defined(CPU_FAM_STM32F3)
-#define CPU_IRQ_NUMOF                   (82U)
-#elif defined(CPU_LINE_STM32F401xE)
-#define CPU_IRQ_NUMOF                   (85U)
-#elif defined(CPU_LINE_STM32F405xx) || defined(CPU_LINE_STM32F407xx) \
-    || defined(CPU_LINE_STM32F415xx)
-#define CPU_IRQ_NUMOF                   (82U)
-#elif defined(CPU_LINE_STM32F410Rx)
-#define CPU_IRQ_NUMOF                   (98U)
-#elif defined(CPU_LINE_STM32F411xE)
-#define CPU_IRQ_NUMOF                   (86U)
-#elif defined(CPU_LINE_STM32F412Zx) || defined(CPU_LINE_STM32F446xx)
-#define CPU_IRQ_NUMOF                   (97U)
-#elif defined(CPU_LINE_STM32F413xx) || defined(CPU_LINE_STM32F423xx) || \
-      defined(CPU_LINE_STM32G474xx)
-#define CPU_IRQ_NUMOF                   (102U)
-#elif defined(CPU_LINE_STM32F429xx) || defined(CPU_LINE_STM32F437xx)
-#define CPU_IRQ_NUMOF                   (91U)
-#elif defined(CPU_LINE_STM32F746xx)
-#define CPU_IRQ_NUMOF                   (98U)
-#elif defined(CPU_LINE_STM32F767xx) || defined(CPU_LINE_STM32F769xx)
-#define CPU_IRQ_NUMOF                   (110U)
-#elif defined(CPU_LINE_STM32F722xx) || defined(CPU_LINE_STM32F723xx)
-#define CPU_IRQ_NUMOF                   (104U)
-#elif defined(CPU_LINE_STM32L031xx)
-#define CPU_IRQ_NUMOF                   (30U)
-#elif defined(CPU_FAM_STM32L0)
-#define CPU_IRQ_NUMOF                   (32U)
-#elif defined(CPU_MODEL_STM32L151RB_A) || defined(CPU_MODEL_STM32L151CB) || \
-    defined(CPU_MODEL_STM32L151CB_A)
-#define CPU_IRQ_NUMOF                   (45U)
-#elif defined(CPU_FAM_STM32L1)
-#define CPU_IRQ_NUMOF                   (57U)
-#elif defined(CPU_MODEL_STM32L432KC) || defined(CPU_MODEL_STM32L433RC)
-#define CPU_IRQ_NUMOF                   (83U)
-#elif defined(CPU_MODEL_STM32L496ZG) || defined(CPU_MODEL_STM32L496AG)
-#define CPU_IRQ_NUMOF                   (91U)
-#elif defined(CPU_MODEL_STM32L4R5ZI)
-#define CPU_IRQ_NUMOF                   (95U)
-#elif defined(CPU_FAM_STM32L4)
-#define CPU_IRQ_NUMOF                   (82U)
-#elif defined(CPU_MODEL_STM32WB55RG)
-#define CPU_IRQ_NUMOF                   (63U)
-#elif defined(CPU_MODEL_STM32G070RB)
-#define CPU_IRQ_NUMOF                   (30U)
-#else
-#error Number of IRQs not configured for this CPU
-#endif
+/* STM32MP1 family has no flah */
+#if !defined(CPU_FAM_STM32MP1)
 #define CPU_FLASH_BASE                  FLASH_BASE
+#endif
+
+/* CPU_IRQ_NUMOF cannot be determined automatically from cmsis header */
+#if defined(CPU_LINE_STM32F030x4)
+#define CPU_IRQ_NUMOF                   (28U)
+#elif defined(CPU_MODEL_STM32MP157CAC)
+#define CPU_IRQ_NUMOF                   (150U)
+#endif
 /** @} */
 
 /**
  * @brief   Flash page configuration
  * @{
  */
-#if defined(CPU_FAM_STM32WB)
+#if defined(CPU_FAM_STM32U5)
+#define FLASHPAGE_SIZE                  (8192U)
+#elif defined(CPU_FAM_STM32WB)
 #define FLASHPAGE_SIZE                  (4096U)
 #elif defined(CPU_LINE_STM32F091xC) || defined(CPU_LINE_STM32F072xB) \
    || defined(CPU_LINE_STM32F030xC) || defined(CPU_LINE_STM32F103xE) \
    || defined(CPU_FAM_STM32F3) || defined(CPU_FAM_STM32L4) \
-   || defined(CPU_FAM_STM32G4) || defined(CPU_FAM_STM32G0)
+   || defined(CPU_FAM_STM32G4) || defined(CPU_FAM_STM32G0) \
+   || defined(CPU_FAM_STM32L5) || defined(CPU_FAM_STM32WL)
 #define FLASHPAGE_SIZE                  (2048U)
 #elif defined(CPU_LINE_STM32F051x8) || defined(CPU_LINE_STM32F042x6) \
    || defined(CPU_LINE_STM32F070xB) || defined(CPU_LINE_STM32F030x8) \
@@ -151,26 +125,114 @@ extern "C" {
 #define FLASHPAGE_SIZE                  (128U)
 #endif
 
+#if defined(CPU_FAM_STM32L0) || defined(CPU_FAM_STM32L1)
+#define FLASHPAGE_ERASE_STATE           (0x00U)
+#endif
+
+#ifdef FLASHPAGE_SIZE
 #define FLASHPAGE_NUMOF                 (STM32_FLASHSIZE / FLASHPAGE_SIZE)
+#endif
+
+#if defined(CPU_FAM_STM32F2) || defined(CPU_FAM_STM32F4) || \
+    defined(CPU_FAM_STM32F7)
+#define PERIPH_FLASHPAGE_CUSTOM_PAGESIZES
+#define PERIPH_FLASHPAGE_NEEDS_FLASHPAGE_ADDR
+
+/**
+ * @brief stm32 dual bank configuration
+ *
+ * By default, the stm32f4 series with 1MB flash enable the DB1M flag to split
+ * the 1MB flash into two banks, 2MB devices are always split in two banks.
+ * On both the stm32f4 and the stm32f7 this can be modified with user
+ * programmable flags. Detecting the settings at runtime is not supported
+ *
+ * @note This must match the setting on the MCU. by default it is assumed that
+ * the user has not changed this setting manually.
+ */
+#if (defined(FLASH_OPTCR_DB1M) && (STM32_FLASHSIZE >= (1024 * 1024)))
+#define FLASHPAGE_DUAL_BANK             1
+#else
+#define FLASHPAGE_DUAL_BANK             0
+#endif
+
+/* stm32f7 uses single bank with 32KB to 256KB sectors on a number of devices */
+#if defined(CPU_FAM_STM32F7)
+#if defined(CPU_LINE_STM32F745xx) || \
+    defined(CPU_LINE_STM32F746xx) || \
+    defined(CPU_LINE_STM32F750xx) || \
+    defined(CPU_LINE_STM32F756xx) || \
+    defined(CPU_LINE_STM32F765xx) || \
+    defined(CPU_LINE_STM32F767xx) || \
+    defined(CPU_LINE_STM32F769xx) || \
+    defined(CPU_LINE_STM32F777xx) || \
+    defined(CPU_LINE_STM32F779xx)
+#define FLASHPAGE_MIN_SECTOR_SIZE       (32 * 1024)
+#elif defined(CPU_LINE_STM32F722xx) || \
+      defined(CPU_LINE_STM32F723xx) || \
+      defined(CPU_LINE_STM32F730xx) || \
+      defined(CPU_LINE_STM32F732xx) || \
+      defined(CPU_LINE_STM32F733xx)
+#define FLASHPAGE_MIN_SECTOR_SIZE       (16 * 1024)
+#else
+/* Intentionally error on an unknown line to prevent flashpage errors */
+#error Unknown STM32F7 Line, unable to determine FLASHPAGE_MIN_SECTOR_SIZE
+#endif
+
+#else /* CPU_FAM_STM32F7 */
+#define FLASHPAGE_MIN_SECTOR_SIZE       (16 * 1024)
+#endif
+
+#if FLASHPAGE_DUAL_BANK
+/* Number of "large" sectors + 4 for the small sectors that together equal a
+ * single large sector. Times two to account for the two banks */
+#define FLASHPAGE_NUMOF                 ((STM32_FLASHSIZE / \
+                                         (8 * FLASHPAGE_MIN_SECTOR_SIZE)) + 8)
+#else
+/* Number of "large" sectors + 4 for the small sectors that together equal a
+ * single large sector, eg: 1 MB = 7 * 128 KB sectors + 1 64 KB and 4 16 KB
+ * sectors */
+#define FLASHPAGE_NUMOF                 ((STM32_FLASHSIZE / \
+                                         (8 * FLASHPAGE_MIN_SECTOR_SIZE)) + 4)
+#endif
+
+#endif
 
 /* The minimum block size which can be written depends on the family.
  * However, the erase block is always FLASHPAGE_SIZE.
  */
 #if defined(CPU_FAM_STM32L4) || defined(CPU_FAM_STM32WB) || \
-    defined(CPU_FAM_STM32G4) || defined(CPU_FAM_STM32G0)
-#define FLASHPAGE_RAW_BLOCKSIZE         (8U)
-#elif defined(CPU_FAM_STM32L0) || defined(CPU_FAM_STM32L1)
-#define FLASHPAGE_RAW_BLOCKSIZE         (4U)
+    defined(CPU_FAM_STM32G4) || defined(CPU_FAM_STM32G0) || \
+    defined(CPU_FAM_STM32L5) || defined(CPU_FAM_STM32U5) || \
+    defined(CPU_FAM_STM32WL)
+#define FLASHPAGE_WRITE_BLOCK_SIZE            (8U)
+typedef uint64_t stm32_flashpage_block_t;
+#elif defined(CPU_FAM_STM32L0) || defined(CPU_FAM_STM32L1) || \
+      defined(CPU_FAM_STM32F2) || defined(CPU_FAM_STM32F4) || \
+      defined(CPU_FAM_STM32F7)
+#define FLASHPAGE_WRITE_BLOCK_SIZE            (4U)
+typedef uint32_t stm32_flashpage_block_t;
 #else
-#define FLASHPAGE_RAW_BLOCKSIZE         (2U)
+#define FLASHPAGE_WRITE_BLOCK_SIZE            (2U)
+typedef uint16_t stm32_flashpage_block_t;
 #endif
 
 #if defined(CPU_FAM_STM32L4) || defined(CPU_FAM_STM32WB) || \
-    defined(CPU_FAM_STM32G4) || defined(CPU_FAM_STM32G0)
-#define FLASHPAGE_RAW_ALIGNMENT         (8U)
+    defined(CPU_FAM_STM32G4) || defined(CPU_FAM_STM32G0) || \
+    defined(CPU_FAM_STM32L5) || defined(CPU_FAM_STM32U5) || \
+    defined(CPU_FAM_STM32WL)
+#define FLASHPAGE_WRITE_BLOCK_ALIGNMENT       (8U)
 #else
 /* Writing should be always 4 bytes aligned */
-#define FLASHPAGE_RAW_ALIGNMENT         (4U)
+#define FLASHPAGE_WRITE_BLOCK_ALIGNMENT       (4U)
+#endif
+/** @} */
+
+/**
+ * @brief   Bit-Band configuration
+ * @{
+ */
+#ifdef SRAM_BB_BASE
+#define CPU_HAS_BITBAND 1
 #endif
 /** @} */
 

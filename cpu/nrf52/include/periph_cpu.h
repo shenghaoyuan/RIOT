@@ -60,7 +60,11 @@ extern "C" {
 /**
  * @brief   The nRF52 family of CPUs provides a fixed number of 9 ADC lines
  */
+#ifdef SAADC_CH_PSELP_PSELP_VDDHDIV5
+#define ADC_NUMOF           (10U)
+#else
 #define ADC_NUMOF           (9U)
+#endif
 
 /**
  * @brief   SPI temporary buffer size for storing const data in RAM before
@@ -83,6 +87,9 @@ enum {
     NRF52_AIN6 = 6,         /**< Analog Input 6 */
     NRF52_AIN7 = 7,         /**< Analog Input 7 */
     NRF52_VDD  = 8,         /**< VDD, not useful if VDD is reference... */
+#ifdef SAADC_CH_PSELP_PSELP_VDDHDIV5
+    NRF52_VDDHDIV5 = 9,     /**< VDDH divided by 5 */
+#endif
 };
 
 #ifndef DOXYGEN
@@ -138,6 +145,14 @@ typedef struct {
 /** @} */
 
 /**
+ * @name    Define macros for sda and scl pin to be able to reinitialize them
+ * @{
+ */
+#define i2c_pin_sda(dev) i2c_config[dev].sda
+#define i2c_pin_scl(dev) i2c_config[dev].scl
+/** @} */
+
+/**
  * @name    The PWM unit on the nRF52 supports 4 channels per device
  */
 #define PWM_CHANNELS        (4U)
@@ -173,13 +188,19 @@ typedef enum {
  * @note    define unused pins only from right to left, so the defined channels
  *          always start with channel 0 to x and the undefined ones are from x+1
  *          to PWM_CHANNELS.
+ *
+ * @warning All the channels not in active use must be set to GPIO_UNDEF; just
+ *          initializing fewer members of pin would insert a 0 value, which
+ *          would be interpreted as the P0.00 pin that's then driven.
  */
+#if defined(PWM_PRESENT) || DOXYGEN
 typedef struct {
     NRF_PWM_Type *dev;                  /**< PWM device descriptor */
     gpio_t pin[PWM_CHANNELS];           /**< PWM out pins */
 } pwm_conf_t;
+#endif
 
-#if defined(CPU_MODEL_NRF52811XXAA) || defined(CPU_MODEL_NRF52840XXAA)
+#if !defined(CPU_MODEL_NRF52832XXAA)
 /**
  * @brief   Structure for UART configuration data
  */
@@ -197,6 +218,13 @@ typedef struct {
 #endif
 
 /**
+ * @brief   Size of the UART TX buffer for non-blocking mode.
+ */
+#ifndef UART_TXBUF_SIZE
+#define UART_TXBUF_SIZE    (64)
+#endif
+
+/**
  * @brief  SPI configuration values
  */
 typedef struct {
@@ -208,7 +236,6 @@ typedef struct {
     uint8_t ppi;        /**< PPI channel */
 #endif
 } spi_conf_t;
-
 
 /**
  * @brief Common SPI/I2C interrupt callback
@@ -236,6 +263,17 @@ void spi_twi_irq_register_spi(NRF_SPIM_Type *bus,
  */
 void spi_twi_irq_register_i2c(NRF_TWIM_Type *bus,
                               spi_twi_irq_cb_t cb, void *arg);
+
+/**
+ * @brief USBDEV buffers must be word aligned because of DMA restrictions
+ */
+#define USBDEV_CPU_DMA_ALIGNMENT       (4)
+
+/**
+ * @brief USBDEV buffer instantiation requirement
+ */
+#define USBDEV_CPU_DMA_REQUIREMENTS    __attribute__((aligned(USBDEV_CPU_DMA_ALIGNMENT)))
+
 #ifdef __cplusplus
 }
 #endif

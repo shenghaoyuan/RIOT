@@ -37,7 +37,7 @@
 #include "periph_cpu.h"
 #include "atmega_gpio.h"
 
-#define ENABLE_DEBUG            (0)
+#define ENABLE_DEBUG            0
 #include "debug.h"
 
 #ifdef MODULE_PERIPH_GPIO_IRQ
@@ -337,16 +337,17 @@ int gpio_init_int(gpio_t pin, gpio_mode_t mode, gpio_flank_t flank,
     EIMSK |= (1 << int_num);
 
     /* apply flank to interrupt number int_num */
-    if (int_num < 4) {
-        EICRA &= ~(0x3 << (int_num * 2));
-        EICRA |= (flank << (int_num * 2));
-    }
     #if defined(EICRB)
-    else {
+    if (int_num >= 4) {
         EICRB &= ~(0x3 << ((int_num % 4) * 2));
         EICRB |= (flank << ((int_num % 4) * 2));
     }
+    else
     #endif
+    {
+        EICRA &= ~(0x3 << (int_num * 2));
+        EICRA |= (flank << (int_num * 2));
+    }
 
     /* set callback */
     config[int_num].cb = cb;
@@ -371,16 +372,16 @@ void gpio_irq_disable(gpio_t pin)
 
 static inline void irq_handler(uint8_t int_num)
 {
-    atmega_enter_isr();
+    avr8_enter_isr();
     config[int_num].cb(config[int_num].arg);
-    atmega_exit_isr();
+    avr8_exit_isr();
 }
 
 #ifdef ENABLE_PCINT
 /* inline function that is used by the PCINT ISR */
 static inline void pcint_handler(uint8_t bank, uint8_t enabled_pcints)
 {
-    atmega_enter_isr();
+    avr8_enter_isr();
     /* Find right item */
     uint8_t idx = 0;
 
@@ -410,7 +411,7 @@ static inline void pcint_handler(uint8_t bank, uint8_t enabled_pcints)
         idx++;
     }
 
-    atmega_exit_isr();
+    avr8_exit_isr();
 }
 #ifdef MODULE_ATMEGA_PCINT0
 ISR(PCINT0_vect, ISR_BLOCK)

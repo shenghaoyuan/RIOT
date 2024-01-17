@@ -23,7 +23,6 @@
 
 #include <stdbool.h>
 
-#include "kernel_types.h"
 #include "periph/uart.h"
 #include "net/netdev.h"
 #include "tsrb.h"
@@ -35,7 +34,7 @@ extern "C" {
 #endif
 
 /* if using ethos + stdio, use STDIO_UART values unless overridden */
-#if IS_USED(MODULE_STDIO_ETHOS) || defined(DOXYGEN)
+#if IS_USED(MODULE_ETHOS_STDIO) || defined(DOXYGEN)
 #include "stdio_uart.h"
 /**
  * @defgroup drivers_ethos_config     Ethernet-over-serial driver driver compile configuration
@@ -90,11 +89,8 @@ typedef struct {
     uint8_t remote_mac_addr[6]; /**< this device's MAC address */
     tsrb_t inbuf;           /**< ringbuffer for incoming data */
     line_state_t state;     /**< Line status variable */
-    size_t framesize;       /**< size of currently incoming frame */
     unsigned frametype;     /**< type of currently incoming frame */
-    size_t last_framesize;  /**< size of last completed frame */
     mutex_t out_mutex;      /**< mutex used for locking concurrent sends */
-    bool accept_new;        /**< incoming frame can be stored or not */
 } ethos_t;
 
 /**
@@ -103,8 +99,6 @@ typedef struct {
 typedef struct {
     uart_t uart;            /**< UART device to use */
     uint32_t baudrate;      /**< baudrate to UART device */
-    uint8_t *buf;           /**< buffer for incoming packets */
-    size_t bufsize;         /**< size of ethos_params_t::buf */
 } ethos_params_t;
 
 /**
@@ -118,13 +112,20 @@ typedef struct {
  *
  * @param[out]  dev         handle of the device to initialize
  * @param[in]   params      parameters for device initialization
+ * @param[in]   index       Index of @p params in a global parameter struct array.
+ *                          If initialized manually, pass a unique identifier instead.
+ * @param[in]   inbuf       buffer to store a received frame in
+ * @param[in]   inbuf_size  size of the receive buffer
  */
-void ethos_setup(ethos_t *dev, const ethos_params_t *params);
+void ethos_setup(ethos_t *dev, const ethos_params_t *params, uint8_t index,
+                 void *inbuf, size_t inbuf_size);
 
 /**
  * @brief   Send frame over serial port using ethos' framing
  *
  * This is used by e.g., stdio over ethos to send text frames.
+ *
+ * @note    Uses mutexes to synchronize sending multiple frames so it should not be called from ISR.
  *
  * @param[in]   dev         handle of the device to initialize
  * @param[in]   data        ptr to data to be sent

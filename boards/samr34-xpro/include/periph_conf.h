@@ -48,7 +48,7 @@ static const tc32_conf_t timer_config[] = {
         .mclk           = &MCLK->APBCMASK.reg,
         .mclk_mask      = MCLK_APBCMASK_TC0 | MCLK_APBCMASK_TC1,
         .gclk_id        = TC0_GCLK_ID,
-        .gclk_src       = SAM0_GCLK_8MHZ,
+        .gclk_src       = SAM0_GCLK_TIMER,
         .flags          = TC_CTRLA_MODE_COUNT32,
     }
 };
@@ -58,7 +58,6 @@ static const tc32_conf_t timer_config[] = {
 #define TIMER_0_ISR         isr_tc0
 #define TIMER_NUMOF         (sizeof(timer_config)/sizeof(timer_config[0]))
 /** @} */
-
 
 /**
  * @name    UART configuration
@@ -165,7 +164,6 @@ static const adc_conf_chan_t adc_channels[] = {
     {GPIO_PIN(PA, 6), ADC_INPUTCTRL_MUXPOS(ADC_INPUTCTRL_MUXPOS_AIN6)},
     {GPIO_PIN(PA, 7), ADC_INPUTCTRL_MUXPOS(ADC_INPUTCTRL_MUXPOS_AIN7)}
 };
-
 
 #define ADC_NUMOF                               ARRAY_SIZE(adc_channels)
 /** @} */

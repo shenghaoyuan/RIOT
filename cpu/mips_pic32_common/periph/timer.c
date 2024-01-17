@@ -17,6 +17,7 @@
   * @}
   */
 
+#include <assert.h>
 #include <mips/cpu.h>
 #include <mips/m32c0.h>
 #include <mips/regdef.h>
@@ -101,7 +102,6 @@ static void timer_isr(void)
     mips_setcompare(mips_getcount() + TICKS_PER_US * TIMER_ACCURACY);
 }
 
-
 /*
  * The mips toolchain C library does not implement gettimeofday()
  *
@@ -119,7 +119,7 @@ int gettimeofday(struct timeval *__restrict __p, void *__restrict __tz)
     return 0;
 }
 
-int timer_init(tim_t dev, unsigned long freq, timer_cb_t cb, void *arg)
+int timer_init(tim_t dev, uint32_t freq, timer_cb_t cb, void *arg)
 {
     assert(dev == 0);
 

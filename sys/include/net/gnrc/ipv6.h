@@ -95,11 +95,10 @@
  * @author      Oliver Hahm <oliver.hahm@inria.fr>
  */
 
-
 #ifndef NET_GNRC_IPV6_H
 #define NET_GNRC_IPV6_H
 
-#include "kernel_types.h"
+#include "sched.h"
 #include "net/gnrc.h"
 #include "thread.h"
 
@@ -115,7 +114,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 /**
  * @defgroup    net_gnrc_ipv6_conf  GNRC IPv6 compile configurations

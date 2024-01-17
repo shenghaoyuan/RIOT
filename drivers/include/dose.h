@@ -31,7 +31,8 @@
  * you could use an IC such as the SN65HVD233.)
  *
  * Basically, UART TX and RX are connected to respective pins of the
- * transceiver. In addition, the RX pin can also be connected to the sense GPIO.
+ * transceiver. In addition, the RX pin can also be connected to the sense GPIO
+ * if the UART does not implement the `periph_uart_rxstart_irq` feature.
  * In this case, the bus allocation can be detected more precisely and
  * collisions are less likely.
  *
@@ -86,9 +87,10 @@ typedef enum {
     DOSE_STATE_IDLE    = 0x02,     /**< Frames will be received or sent */
     DOSE_STATE_RECV    = 0x03,     /**< Currently receiving a frame */
     DOSE_STATE_SEND    = 0x04,     /**< Currently sending a frame */
+    DOSE_STATE_STANDBY = 0x05,     /**< Receiver is turned off, but send will wake it up */
+    DOSE_STATE_SLEEP   = 0x06,     /**< Receiver is turned off and send will be discarded */
     DOSE_STATE_ANY     = 0x0F      /**< Special state filter used internally to observe any state transition */
 } dose_state_t;
-
 
 /**
  * @name    Signal definitions
@@ -103,8 +105,6 @@ typedef enum {
     DOSE_SIGNAL_SEND   = 0x50,    /**< Enter send state */
     DOSE_SIGNAL_END    = 0x60     /**< Leave send state */
 } dose_signal_t;
-
-
 
 /**
  * @name    Flag definitions
@@ -130,12 +130,12 @@ typedef enum {
  * @{
  */
 /**
- * @brief Timeout that brings the driver back into idle state.
+ * @brief Timeout that brings the driver back into idle state expressed as bytes.
  *
  *  Fallback to idle if the remote side died within a transaction.
  */
-#ifndef CONFIG_DOSE_TIMEOUT_USEC
-#define CONFIG_DOSE_TIMEOUT_USEC        (5000)
+#ifndef CONFIG_DOSE_TIMEOUT_BYTES
+#define CONFIG_DOSE_TIMEOUT_BYTES       (50)
 #endif
 /** @} */
 
@@ -152,14 +152,17 @@ typedef struct {
     uint8_t opts;                           /**< Driver options */
     dose_state_t state;                     /**< Current state of the driver's state machine */
     mutex_t state_mtx;                      /**< Is unlocked every time a state is (re)entered */
-    uint8_t flags;                          /**< Several flags */
     uint8_t recv_buf[DOSE_FRAME_LEN];       /**< Receive buffer for incoming frames */
     size_t recv_buf_ptr;                    /**< Index of the next empty octet of the recveive buffer */
-    uart_t uart;                            /**< UART device to use */
-    uint8_t uart_octet;                     /**< Last received octet */
+#if !defined(MODULE_PERIPH_UART_RXSTART_IRQ) || DOXYGEN
     gpio_t sense_pin;                       /**< GPIO to sense for start bits on the UART's rx line */
+#endif
+    gpio_t standby_pin;                     /**< GPIO to put the CAN transceiver in standby mode */
     xtimer_t timeout;                       /**< Timeout timer ensuring always to get back to IDLE state */
     uint32_t timeout_base;                  /**< Base timeout in us */
+    uart_t uart;                            /**< UART device to use */
+    uint8_t uart_octet;                     /**< Last received octet */
+    uint8_t flags;                          /**< Several flags */
 } dose_t;
 
 /**
@@ -167,7 +170,10 @@ typedef struct {
  */
 typedef struct {
     uart_t uart;                            /**< UART device to use */
+#if !defined(MODULE_PERIPH_UART_RXSTART_IRQ) || DOXYGEN
     gpio_t sense_pin;                       /**< GPIO to sense for start bits on the UART's rx line */
+#endif
+    gpio_t standby_pin;                     /**< GPIO to put the CAN transceiver in standby mode */
     uint32_t baudrate;                      /**< Baudrate to UART device */
 } dose_params_t;
 
@@ -175,8 +181,10 @@ typedef struct {
  * @brief   Setup a DOSE based device state
  * @param[out]  dev         Handle of the device to initialize
  * @param[in]   params      Parameters for device initialization
+ * @param[in]   index       Index of @p params in a global parameter struct array.
+ *                          If initialized manually, pass a unique identifier instead.
  */
-void dose_setup(dose_t *dev, const dose_params_t *params);
+void dose_setup(dose_t *dev, const dose_params_t *params, uint8_t index);
 
 #ifdef __cplusplus
 }

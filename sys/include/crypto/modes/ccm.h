@@ -69,13 +69,12 @@ extern "C" {
  *                         can be 0 if input_len=0 (no plaintext)
  * @return                 A negative error code if something went wrong
  */
-int cipher_encrypt_ccm(cipher_t *cipher,
+int cipher_encrypt_ccm(const cipher_t *cipher,
                        const uint8_t *auth_data, uint32_t auth_data_len,
                        uint8_t mac_length, uint8_t length_encoding,
                        const uint8_t *nonce, size_t nonce_len,
                        const uint8_t *input, size_t input_len,
                        uint8_t *output);
-
 
 /**
  * @brief Decrypt data of arbitrary length in ccm mode.
@@ -99,7 +98,7 @@ int cipher_encrypt_ccm(cipher_t *cipher,
  *                         can be 0 if only auth_data and MAC is present.
  * @return                 A negative error code if something went wrong
  */
-int cipher_decrypt_ccm(cipher_t *cipher,
+int cipher_decrypt_ccm(const cipher_t *cipher,
                        const uint8_t *auth_data, uint32_t auth_data_len,
                        uint8_t mac_length, uint8_t length_encoding,
                        const uint8_t *nonce, size_t nonce_len,

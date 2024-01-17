@@ -398,18 +398,18 @@ static void _sock_set_cb(socket_t *socket)
     switch (socket->type) {
 #ifdef MODULE_SOCK_IP
         case SOCK_RAW:
-            sock_ip_set_cb(&socket->sock.ip, callback.ip, socket);
+            sock_ip_set_cb(&socket->sock->raw, callback.ip, socket);
             break;
 #endif
 #ifdef MODULE_SOCK_TCP
         case SOCK_STREAM:
             /* is a TCP client socket */
             if (socket->queue_array == NULL) {
-                sock_tcp_set_cb(&socket->sock.tcp.sock, callback.tcp, socket);
+                sock_tcp_set_cb(&socket->sock->tcp.sock, callback.tcp, socket);
             }
             /* is a TCP listening socket */
             else {
-                sock_tcp_queue_set_cb(&socket->sock.tcp.queue,
+                sock_tcp_queue_set_cb(&socket->sock->tcp.queue,
                                       callback.tcp_queue, socket);
             }
             break;
@@ -482,7 +482,6 @@ int socket(int domain, int type, int protocol)
     mutex_unlock(&_socket_pool_mutex);
     return res;
 }
-
 
 int accept(int socket, struct sockaddr *restrict address,
            socklen_t *restrict address_len)
@@ -1037,8 +1036,7 @@ static ssize_t socket_sendto(socket_t *s, const void *buffer, size_t length,
             return -1;
         }
 #endif
-        /* bind implicitly */
-        if ((res = _bind_connect(s, NULL, 0)) < 0) {
+        if ((res = _bind_connect(s, address, address_len)) < 0) {
             return res;
         }
     }
@@ -1197,7 +1195,7 @@ int posix_socket_select(int fd)
                 return res;
             }
         }
-        socket->selecting_thread = (thread_t *)sched_active_thread;
+        socket->selecting_thread = thread_get_active();
         return 0;
     }
 #else

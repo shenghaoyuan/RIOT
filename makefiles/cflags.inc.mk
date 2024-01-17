@@ -1,8 +1,8 @@
 # Test if the input language was specified externally.
-# Otherwise test if the compiler unterstands the "-std=c99" flag, and use it if so.
+# Otherwise test if the compiler unterstands the "-std=c11" flag, and use it if so.
 ifeq ($(filter -std=%,$(CFLAGS)),)
-  ifeq ($(shell $(CC) -std=c99 -E - 2>/dev/null >/dev/null </dev/null ; echo $$?),0)
-    CFLAGS += -std=c99
+  ifeq ($(shell $(CC) -std=c11 -E - 2>/dev/null >/dev/null </dev/null ; echo $$?),0)
+    CFLAGS += -std=c11
   endif
 endif
 
@@ -19,6 +19,22 @@ ifneq ($(CC_NOCOLOR),1)
   OPTIONAL_CFLAGS += -fdiagnostics-color
 endif
 
+# Force the C compiler to not ignore signed integer overflows
+# Background:   In practise signed integers overflow consistently and wrap
+#               around to the lowest number. But this is undefined behaviour.
+#               Branches that rely on this undefined behaviour will be silently
+#               optimized out. For details, have a look at
+#               https://gcc.gnu.org/bugzilla/show_bug.cgi?id=30475
+# Note:         Please do not add new code that relies on this undefined
+#               behaviour, even though this flag makes your code work. There are
+#               safe ways to check for signed integer overflow.
+CFLAGS += -fwrapv
+# Enable warnings for code relying on signed integers to overflow correctly
+# (see above for details).
+# Note:         This warning is sadly not reliable, thus -fwrapv cannot be
+#               dropped in favor of this
+CFLAGS += -Wstrict-overflow
+
 # Fast-out on old style function definitions.
 # They cause unreadable error compiler errors on missing semicolons.
 # Worse yet they hide errors by accepting wildcard argument types.
@@ -29,6 +45,12 @@ OPTIONAL_CFLAGS += -Wold-style-definition
 CXXUWFLAGS += -std=%
 CXXUWFLAGS += -Wstrict-prototypes -Wold-style-definition
 
+ifeq ($(filter -std=%,$(CXXEXFLAGS)),)
+  ifeq ($(shell $(CC) -std=c++14 -E - 2>/dev/null >/dev/null </dev/null ; echo $$?),0)
+    CXXEXFLAGS += -std=c++14
+  endif
+endif
+
 ifeq ($(LTO),1)
   $(warning Building with Link-Time-Optimizations is currently an experimental feature. Expect broken binaries.)
   LTOFLAGS = -flto
@@ -37,6 +59,10 @@ endif
 
 # Forbid common symbols to prevent accidental aliasing.
 CFLAGS += -fno-common
+
+# Place data and functions into their own sections. This helps the linker
+# garbage collection to remove unused symbols when linking statically.
+CFLAGS += -ffunction-sections -fdata-sections
 
 # Compress debug info. This saves approximately 50% of disk usage.
 # It has no effect if debugging information is not emitted, so it can be left
@@ -50,6 +76,9 @@ OPTIONAL_CFLAGS += -Wformat=2
 OPTIONAL_CFLAGS += -Wformat-overflow
 OPTIONAL_CFLAGS += -Wformat-truncation
 
+# Warn about casts that increase alignment requirements
+OPTIONAL_CFLAGS += -Wcast-align
+
 # Warn if a user-supplied include directory does not exist.
 CFLAGS += -Wmissing-include-dirs
 
@@ -61,9 +90,3 @@ endif
 
 # Add the optional flags that are not architecture/toolchain blacklisted
 CFLAGS += $(filter-out $(OPTIONAL_CFLAGS_BLACKLIST),$(OPTIONAL_CFLAGS))
-
-# Default ARFLAGS for platforms which do not specify it.
-# Note: make by default provides ARFLAGS=rv which we want to override
-ifeq ($(origin ARFLAGS),default)
-  ARFLAGS = rcTs
-endif

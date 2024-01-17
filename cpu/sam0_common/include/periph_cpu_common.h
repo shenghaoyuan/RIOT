@@ -73,10 +73,18 @@ typedef uint32_t gpio_t;
  * @brief   Macro for accessing GPIO pins
  * @{
  */
-#ifdef CPU_FAM_SAML11
+#ifdef MODULE_PERIPH_GPIO_FAST_READ
+#ifdef PORT_IOBUS_SEC
+#define GPIO_PIN(x, y)      (((gpio_t)(&PORT_IOBUS_SEC->Group[x])) | y)
+#else /* Use IOBUS access when available */
+#define GPIO_PIN(x, y)      (((gpio_t)(&PORT_IOBUS->Group[x])) | y)
+#endif /* PORT_IOBUS_SEC */
+#else
+#ifdef PORT_SEC
 #define GPIO_PIN(x, y)      (((gpio_t)(&PORT_SEC->Group[x])) | y)
 #else
 #define GPIO_PIN(x, y)      (((gpio_t)(&PORT->Group[x])) | y)
+#endif /* PORT_IOBUS_SEC */
 #endif
 
 /**
@@ -139,6 +147,12 @@ typedef enum {
     GPIO_MUX_F = 0x5,       /**< select peripheral function F */
     GPIO_MUX_G = 0x6,       /**< select peripheral function G */
     GPIO_MUX_H = 0x7,       /**< select peripheral function H */
+    GPIO_MUX_I = 0x8,       /**< select peripheral function I */
+    GPIO_MUX_J = 0x9,       /**< select peripheral function J */
+    GPIO_MUX_K = 0xa,       /**< select peripheral function K */
+    GPIO_MUX_L = 0xb,       /**< select peripheral function L */
+    GPIO_MUX_M = 0xc,       /**< select peripheral function M */
+    GPIO_MUX_N = 0xd,       /**< select peripheral function N */
 } gpio_mux_t;
 #endif
 
@@ -169,8 +183,6 @@ typedef enum {
     UART_FLAG_NONE            = 0x0,    /**< No flags set */
     UART_FLAG_RUN_STANDBY     = 0x1,    /**< run SERCOM in standby mode */
     UART_FLAG_WAKEUP          = 0x2,    /**< wake from sleep on receive */
-    UART_FLAG_RXINV           = 0x4,    /**< invert RX signal */
-    UART_FLAG_TXINV           = 0x8,    /**< invert TX signal */
 } uart_flag_t;
 
 #ifndef DOXYGEN
@@ -189,8 +201,16 @@ typedef enum {
     UART_DATA_BITS_8 = 0x0,   /**< 8 data bits */
 } uart_data_bits_t;
 /** @} */
-#endif /* ndef DOXYGEN */
 
+/**
+ * @brief   UART pin getters
+ * @{
+ */
+#define uart_pin_rx(dev) uart_config[dev].rx_pin
+#define uart_pin_tx(dev) uart_config[dev].tx_pin
+/** @} */
+
+#endif /* ndef DOXYGEN */
 
 /**
  * @brief   Size of the UART TX buffer for non-blocking mode.
@@ -201,6 +221,16 @@ typedef enum {
 
 /**
  * @brief   UART device configuration
+ *
+ *          The frequency f() of the clock `gclk_src` must fulfill the condition
+ *
+ *              16 * baud < f(gclk_src) ≤ 2²⁰ * baud
+ *
+ *          in Asynchronous Arithmetic mode and
+ *
+ *              16 * baud < f(gclk_src) ≤ 2¹⁷ * baud
+ *
+ *          in Asynchronous Fractional mode
  */
 typedef struct {
     SercomUsart *dev;       /**< pointer to the used UART device */
@@ -217,13 +247,23 @@ typedef struct {
     uint8_t gclk_src;       /**< GCLK source which supplys SERCOM */
 } uart_conf_t;
 
+enum {
+    TIMER_TYPE_TC,          /**< Timer is a TC timer  */
+    TIMER_TYPE_TCC,         /**< Timer is a TCC timer */
+};
+
 /**
  * @brief   Common configuration for timer devices
  */
 typedef struct {
-#ifdef REV_TCC
-    Tcc *dev;                   /**< TCC device to use */
+    union {
+#ifdef REV_TC
+        Tc *tc;                 /**< TC device to use */
 #endif
+#ifdef REV_TCC
+        Tcc *tcc;               /**< TCC device to use */
+#endif
+    } dev;                      /**< The Timer device used for PWM */
 #ifdef MCLK
     volatile uint32_t *mclk;    /**< Pointer to MCLK->APBxMASK.reg */
     uint32_t mclk_mask;         /**< MCLK_APBxMASK bits to enable Timer */
@@ -231,22 +271,43 @@ typedef struct {
     uint32_t pm_mask;           /**< PM_APBCMASK bits to enable Timer */
 #endif
     uint16_t gclk_id;           /**< TCn_GCLK_ID */
-} tcc_cfg_t;
+    uint8_t type;               /**< Timer type (TC/TCC) */
+} tc_tcc_cfg_t;
 
 /**
- * @brief   Static initializer for timer configuration
+ * @brief   Static initializer for TC timer configuration
+ */
+#ifdef MCLK
+#define TC_CONFIG(tim)                    { \
+        .dev       = {.tc = tim},           \
+        .mclk      = MCLK_ ## tim,          \
+        .mclk_mask = MCLK_ ## tim ## _MASK, \
+        .gclk_id   = tim ## _GCLK_ID,       \
+        .type      = TIMER_TYPE_TC,       }
+#else
+#define TC_CONFIG(tim)                    { \
+        .dev       = {.tc = tim},           \
+        .pm_mask   = PM_APBCMASK_ ## tim,   \
+        .gclk_id   = tim ## _GCLK_ID,       \
+        .type      = TIMER_TYPE_TC,       }
+#endif
+
+/**
+ * @brief   Static initializer for TCC timer configuration
  */
 #ifdef MCLK
 #define TCC_CONFIG(tim)                   { \
-        .dev       = tim,                   \
+        .dev       = {.tcc = tim},          \
         .mclk      = MCLK_ ## tim,          \
         .mclk_mask = MCLK_ ## tim ## _MASK, \
-        .gclk_id   = tim ## _GCLK_ID,     }
+        .gclk_id   = tim ## _GCLK_ID,       \
+        .type      = TIMER_TYPE_TCC,      }
 #else
 #define TCC_CONFIG(tim)                   { \
-        .dev       = tim,                   \
+        .dev       = {.tcc = tim},          \
         .pm_mask   = PM_APBCMASK_ ## tim,   \
-        .gclk_id   = tim ## _GCLK_ID,     }
+        .gclk_id   = tim ## _GCLK_ID,       \
+        .type      = TIMER_TYPE_TCC,      }
 #endif
 
 /**
@@ -262,7 +323,7 @@ typedef struct {
  * @brief   PWM device configuration data structure
  */
 typedef struct {
-    tcc_cfg_t tim;                  /**< timer configuration */
+    tc_tcc_cfg_t tim;               /**< timer configuration */
     const pwm_conf_chan_t *chan;    /**< channel configuration */
     uint8_t chan_numof;             /**< number of channels */
     uint8_t gclk_src;               /**< GCLK source which clocks TIMER */
@@ -273,9 +334,9 @@ typedef struct {
  */
 typedef enum {
     SPI_PAD_MISO_0 = 0x0,       /**< use pad 0 for MISO line */
-    SPI_PAD_MISO_1 = 0x1,       /**< use pad 0 for MISO line */
-    SPI_PAD_MISO_2 = 0x2,       /**< use pad 0 for MISO line */
-    SPI_PAD_MISO_3 = 0x3,       /**< use pad 0 for MISO line */
+    SPI_PAD_MISO_1 = 0x1,       /**< use pad 1 for MISO line */
+    SPI_PAD_MISO_2 = 0x2,       /**< use pad 2 for MISO line */
+    SPI_PAD_MISO_3 = 0x3,       /**< use pad 3 for MISO line */
 } spi_misopad_t;
 
 /**
@@ -331,7 +392,7 @@ typedef enum {
  * @brief   SPI device configuration
  */
 typedef struct {
-    SercomSpi *dev;         /**< pointer to the used SPI device */
+    void *dev;              /**< pointer to the used SPI device */
     gpio_t miso_pin;        /**< used MISO pin */
     gpio_t mosi_pin;        /**< used MOSI pin */
     gpio_t clk_pin;         /**< used CLK pin */
@@ -383,6 +444,15 @@ typedef enum {
 
 /**
  * @brief   I2C device configuration
+ *          The frequency f() of the clock `gclk_src` must fulfill the condition
+ *
+ *              4 * speed ≤ f(gclk_src) ≤ 512 * speed
+ *
+ *          if speed ≤ 1 MHz and
+ *
+ *             12 * speed ≤ f(gclk_src) ≤ 520 * speed
+ *
+ *          if speed > 1 MHz
  */
 typedef struct {
     SercomI2cm *dev;        /**< pointer to the used I2C device */
@@ -595,9 +665,9 @@ static inline uint8_t sercom_id(const void *sercom)
 static inline void sercom_clk_en(void *sercom)
 {
     const uint8_t id = sercom_id(sercom);
-#if defined(CPU_FAM_SAMD21)
+#if defined(CPU_COMMON_SAMD21)
     PM->APBCMASK.reg |= (PM_APBCMASK_SERCOM0 << id);
-#elif defined (CPU_FAM_SAMD5X)
+#elif defined (CPU_COMMON_SAMD5X)
     if (id < 2) {
         MCLK->APBAMASK.reg |= (1 << (id + 12));
     } else if (id < 4) {
@@ -609,11 +679,11 @@ static inline void sercom_clk_en(void *sercom)
     if (id < 5) {
         MCLK->APBCMASK.reg |= (MCLK_APBCMASK_SERCOM0 << id);
     }
-#if defined(CPU_FAM_SAML21)
+#if defined(CPU_COMMON_SAML21)
     else {
         MCLK->APBDMASK.reg |= (MCLK_APBDMASK_SERCOM5);
     }
-#endif /* CPU_FAM_SAML21 */
+#endif /* CPU_COMMON_SAML21 */
 #endif
 }
 
@@ -625,9 +695,9 @@ static inline void sercom_clk_en(void *sercom)
 static inline void sercom_clk_dis(void *sercom)
 {
     const uint8_t id = sercom_id(sercom);
-#if defined(CPU_FAM_SAMD21)
+#if defined(CPU_COMMON_SAMD21)
     PM->APBCMASK.reg &= ~(PM_APBCMASK_SERCOM0 << id);
-#elif defined (CPU_FAM_SAMD5X)
+#elif defined (CPU_COMMON_SAMD5X)
     if (id < 2) {
         MCLK->APBAMASK.reg &= ~(1 << (id + 12));
     } else if (id < 4) {
@@ -639,15 +709,15 @@ static inline void sercom_clk_dis(void *sercom)
     if (id < 5) {
         MCLK->APBCMASK.reg &= ~(MCLK_APBCMASK_SERCOM0 << id);
     }
-#if defined (CPU_FAM_SAML21)
+#if defined (CPU_COMMON_SAML21)
     else {
         MCLK->APBDMASK.reg &= ~(MCLK_APBDMASK_SERCOM5);
     }
-#endif /* CPU_FAM_SAML21 */
+#endif /* CPU_COMMON_SAML21 */
 #endif
 }
 
-#ifdef CPU_FAM_SAMD5X
+#ifdef CPU_COMMON_SAMD5X
 static inline uint8_t _sercom_gclk_id_core(uint8_t sercom_id) {
     if (sercom_id < 2)
         return sercom_id + 7;
@@ -668,21 +738,21 @@ static inline void sercom_set_gen(void *sercom, uint8_t gclk)
 {
     const uint8_t id = sercom_id(sercom);
     sam0_gclk_enable(gclk);
-#if defined(CPU_FAM_SAMD21)
+#if defined(CPU_COMMON_SAMD21)
     GCLK->CLKCTRL.reg = (GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN(gclk) |
                          (SERCOM0_GCLK_ID_CORE + id));
     while (GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY) {}
-#elif defined(CPU_FAM_SAMD5X)
+#elif defined(CPU_COMMON_SAMD5X)
     GCLK->PCHCTRL[_sercom_gclk_id_core(id)].reg = (GCLK_PCHCTRL_CHEN | GCLK_PCHCTRL_GEN(gclk));
 #else
     if (id < 5) {
         GCLK->PCHCTRL[SERCOM0_GCLK_ID_CORE + id].reg = (GCLK_PCHCTRL_CHEN | GCLK_PCHCTRL_GEN(gclk));
     }
-#if defined(CPU_FAM_SAML21)
+#if defined(CPU_COMMON_SAML21)
     else {
         GCLK->PCHCTRL[SERCOM5_GCLK_ID_CORE].reg = (GCLK_PCHCTRL_CHEN | GCLK_PCHCTRL_GEN(gclk));
     }
-#endif /* CPU_FAM_SAML21 */
+#endif /* CPU_COMMON_SAML21 */
 #endif
 }
 
@@ -707,6 +777,58 @@ typedef struct {
 } adc_conf_chan_t;
 
 /**
+ * @name Ethernet peripheral parameters
+ * @{
+ */
+#ifndef ETH_RX_BUFFER_COUNT
+#define ETH_RX_BUFFER_COUNT (4)
+#endif
+
+#ifndef ETH_TX_BUFFER_COUNT
+#define ETH_TX_BUFFER_COUNT (4)
+#endif
+
+#ifndef ETH_RX_BUFFER_SIZE
+#define ETH_RX_BUFFER_SIZE (1536)
+#endif
+
+#ifndef ETH_TX_BUFFER_SIZE
+#define ETH_TX_BUFFER_SIZE (1536)
+#endif
+/** @} */
+
+/**
+ * @brief Ethernet parameters struct
+ */
+#if defined(GMAC_INST_NUM) || defined(DOXYGEN)
+typedef struct {
+    Gmac *dev;                /**< ptr to the device registers */
+    gpio_t refclk;            /**< REFCLK gpio */
+    gpio_t txen;              /**< TXEN gpio */
+    gpio_t txd0;              /**< TXD0 gpio */
+    gpio_t txd1;              /**< TXD1 gpio */
+    gpio_t crsdv;             /**< CRSDV gpio */
+    gpio_t rxd0;              /**< RXD0 gpio */
+    gpio_t rxd1;              /**< RXD1 gpio */
+    gpio_t rxer;              /**< RXER gpio */
+    gpio_t mdc;               /**< MII interface, clock gpio */
+    gpio_t mdio;              /**< MII interface, data gpio */
+    gpio_t rst_pin;           /**< PHY reset gpio */
+    gpio_t int_pin;           /**< PHY interrupt gpio */
+} sam0_common_gmac_config_t;
+#endif
+
+/**
+ * @brief USBDEV buffers must be word aligned because of DMA restrictions
+ */
+#define USBDEV_CPU_DMA_ALIGNMENT       (4)
+
+/**
+ * @brief USBDEV buffer instantiation requirement
+ */
+#define USBDEV_CPU_DMA_REQUIREMENTS    __attribute__((aligned(USBDEV_CPU_DMA_ALIGNMENT)))
+
+/**
  * @brief USB peripheral parameters
  */
 #if defined(USB_INST_NUM) || defined(DOXYGEN)
@@ -729,7 +851,6 @@ typedef struct {
 #define NWDT_TIME_UPPER_LIMIT          (16384U)
 /** @} */
 
-
 /**
  * @brief Watchdog can be stopped.
  */
@@ -739,6 +860,7 @@ typedef struct {
  */
 #define WDT_HAS_INIT                   (1)
 
+#if defined(REV_DMAC) || DOXYGEN
 /**
  * @name sam0 DMA peripheral
  * @{
@@ -793,7 +915,7 @@ typedef struct {
 /**
  * @brief Move the DMA descriptors to the LP SRAM. Required on the SAML21
  */
-#if defined(CPU_FAM_SAML21) || defined(DOXYGEN)
+#if defined(CPU_COMMON_SAML21) || defined(DOXYGEN)
 #define DMA_DESCRIPTOR_IN_LPSRAM
 #endif
 
@@ -1006,6 +1128,126 @@ void dma_wait(dma_t dma);
  * @param   dma     DMA channel reference
  */
 void dma_cancel(dma_t dma);
+/** @} */
+#endif /* REV_DMAC || DOXYGEN */
+
+/**
+ * @name sam0 RTC Tamper Detection
+ * @{
+ */
+
+/**
+ * @brief   Power on the RTC (if the RTC/RTT is not otherwise used)
+ */
+void rtc_tamper_init(void);
+
+/**
+ * @brief   Enable Tamper Detection IRQs
+ *
+ * @param   pin     The GPIO pin to be used for tamper detection
+ * @param   flank   The Flank to trigger the even
+ *
+ * @return  0 on success, -1 if pin is not RTC pin
+ */
+int rtc_tamper_register(gpio_t pin, gpio_flank_t flank);
+
+/**
+ * @brief   Enable Tamper Detection IRQs
+ */
+void rtc_tamper_enable(void);
+
+/**
+ * @brief   Get and clear the RTC tamper event that has woken the CPU
+ *          from Deep Sleep.
+ *
+ * @return  The set bits in the return value correspond to the tamper
+ *          pin index inside the @ref rtc_tamper_pins array.
+ */
+uint8_t rtc_get_tamper_event(void);
+
+/**
+ * @brief   Get the tamper event mask for a certain pin.
+ *          Can be used together with @ref rtc_get_tamper_event to
+ *          check which RTC  pin caused the tamper event.
+ *
+ * @param pin   Pin to query
+ *
+ * @return  Bit mask with the bit corresponding to @p pin set
+ *          0 if @p pin is no RTC tamper pin
+ */
+uint8_t rtc_tamper_pin_mask(gpio_t pin);
+/** @} */
+
+/**
+ * @name sam0 User Configuration
+ *
+ *      The MCUs of this family contain a region of memory that is used to store
+ *      CPU configuration & calibration data.
+ *      It can be used to set persistent settings and has some additional space
+ *      to store user configuration data.
+ * @{
+ */
+
+/**
+ * @brief MCU configuration applied on start. The contents of this struct differ
+ *        between families.
+ */
+typedef struct sam0_aux_cfg_mapping nvm_user_page_t;
+
+/**
+ * @brief   Size of the free to use auxiliary area in the user page
+ */
+#ifdef FLASH_USER_PAGE_SIZE
+#define FLASH_USER_PAGE_AUX_SIZE (FLASH_USER_PAGE_SIZE - sizeof(nvm_user_page_t))
+#else
+#define FLASH_USER_PAGE_AUX_SIZE (AUX_PAGE_SIZE * AUX_NB_OF_PAGES - sizeof(nvm_user_page_t))
+#endif
+
+/**
+ * @brief   Reset the configuration area, apply a new configuration.
+ *
+ *
+ * @param   cfg     New MCU configuration, may be NULL.
+ *                  If cfg is NULL, this will clear the configuration area
+ *                  and apply the current configuration again.
+ */
+void sam0_flashpage_aux_reset(const nvm_user_page_t *cfg);
+
+/**
+ * @brief   Write data to the user configuration area.
+ *          This will write data to the remaining space after @see nvm_user_page_t
+ *          The size of this area depends on the MCU family used.
+ *
+ *          Will only write bits 1 -> 0. To reset bits to 1, call @see sam0_flashpage_aux_reset
+ *          This will reset the whole user area configuration.
+ *
+ *          Arbitrary data lengths and offsets are supported.
+ *
+ * @param   offset  Byte offset after @see nvm_user_page_t
+ *                  must be less than `FLASH_USER_PAGE_AUX_SIZE`
+ * @param   data    The data to write
+ * @param   len     Size of the data
+ */
+void sam0_flashpage_aux_write(uint32_t offset, const void *data, size_t len);
+
+/**
+ * @brief   Get pointer to data in the user configuration area.
+ *
+ * @param   offset  Byte offset after @see nvm_user_page_t
+ *                  must be less than `FLASH_USER_PAGE_AUX_SIZE`
+ * @return  Pointer to the data in the User Page
+ */
+#define sam0_flashpage_aux_get(offset)  \
+    (const void*)((uint8_t*)NVMCTRL_USER + sizeof(nvm_user_page_t) + (offset))
+
+/**
+ * @brief   Get pointer to data in the CPU configuration struct
+ *
+ * @return  Pointer to the @ref nvm_user_page_t structure
+ */
+#define sam0_flashpage_aux_cfg() \
+    ((const nvm_user_page_t*)NVMCTRL_USER)
+
 /** @} */
 
 #ifdef __cplusplus

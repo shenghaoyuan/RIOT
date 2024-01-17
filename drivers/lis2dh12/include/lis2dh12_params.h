@@ -67,6 +67,9 @@ extern "C" {
 #ifndef LIS2DH12_PARAM_RATE
 #define LIS2DH12_PARAM_RATE         LIS2DH12_RATE_100HZ
 #endif
+#ifndef LIS2DH12_PARAM_RESOLUTION
+#define LIS2DH12_PARAM_RESOLUTION   LIS2DH12_POWER_NORMAL
+#endif
 
 #ifndef LIS2DH12_PARAMS
 #ifdef MODULE_LIS2DH12_INT
@@ -76,12 +79,14 @@ extern "C" {
                                     .int2_pin = LIS2DH12_PARAM_INT_PIN2,  \
                                     .scale = LIS2DH12_PARAM_SCALE,  \
                                     .rate  = LIS2DH12_PARAM_RATE,  \
+                                    .resolution = LIS2DH12_PARAM_RESOLUTION,  \
                                 }
 #else /* MODULE_LIS2DH12_INT */
 #define LIS2DH12_PARAMS         {  \
                                     LIS2DH12_PARAMS_BUSCFG,  \
                                     .scale = LIS2DH12_PARAM_SCALE,  \
                                     .rate  = LIS2DH12_PARAM_RATE,  \
+                                    .resolution = LIS2DH12_PARAM_RESOLUTION,  \
                                 }
 #endif /* MODULE_LIS2DH12_INT */
 #endif /* LIS2DH12_PARAMS */

@@ -25,6 +25,13 @@
 #include "msg.h"
 #include "irq.h"
 
+/* XTIMER_SHIFT can be undefined when using xtimer_on_ztimer on boards
+ * incompatible with xtimers tick conversion, e.g. the waspmote-pro
+ */
+#ifndef XTIMER_SHIFT
+#define XTIMER_SHIFT    (0)
+#endif
+
 /* timeout at one millisecond (1000 us) to make sure it does not spin. */
 #define LONG_MUTEX_TIMEOUT 1000
 
@@ -47,7 +54,6 @@ static int cmd_test_xtimer_mutex_lock_timeout_short_unlocked(int argc,
                                                              char **argv);
 static int cmd_test_xtimer_mutex_lock_timeout_short_locked(int argc,
                                                            char **argv);
-
 
 /**
  * @brief   List of command for this application.
@@ -337,7 +343,6 @@ static int cmd_test_xtimer_mutex_lock_timeout_short_unlocked(int argc,
 
     return 0;
 }
-
 
 /**
  * @brief   main function starting shell

@@ -20,6 +20,7 @@
 #define PERIPH_CPU_H
 
 #include <stdint.h>
+#include "sdk_conf.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -496,9 +497,8 @@ typedef struct {
 #define PERIPH_SPI_NEEDS_TRANSFER_REGS  /**< requires function spi_transfer_regs */
 /** @} */
 
-
 /**
- * @name   Timer configuration depenend on which implementation is used
+ * @name   Timer configuration depending on which implementation is used
  *
  * Timers are MCU built-in feature and not board-specific. They are therefore
  * configured here.
@@ -562,6 +562,10 @@ typedef struct {
  */
 #define UART_NUMOF_MAX  (3)
 /** @} */
+
+#ifdef MODULE_PERIPH_CAN
+#include "can_esp.h"
+#endif
 
 #ifdef __cplusplus
 }

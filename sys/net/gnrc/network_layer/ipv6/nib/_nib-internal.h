@@ -27,7 +27,7 @@
 
 #include "bitfield.h"
 #include "evtimer_msg.h"
-#include "kernel_types.h"
+#include "sched.h"
 #include "mutex.h"
 #include "net/eui64.h"
 #include "net/ipv6/addr.h"
@@ -41,6 +41,7 @@
 #include "net/gnrc/sixlowpan/ctx.h"
 #include "net/ndp.h"
 #include "random.h"
+#include "timex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -227,8 +228,8 @@ typedef struct {
     ipv6_addr_t addr;               /**< The address of the border router */
     uint32_t version;               /**< last received version of the info of
                                      *   the _nib_abr_entry_t::addr */
-    uint32_t valid_until;           /**< timestamp (in minutes) until which
-                                     *   information is valid */
+    uint32_t valid_until_ms;        /**< timestamp (in ms) until which information is valid
+                                     *   (needs resolution in minutes an 16 bits of them)*/
     evtimer_msg_event_t timeout;    /**< timeout of the information */
     /**
      * @brief   Bitfield marking the prefixes in the NIB's off-link entries
@@ -348,6 +349,26 @@ _nib_onl_entry_t *_nib_onl_iter(const _nib_onl_entry_t *last);
  * @return  NULL, if there is no such entry.
  */
 _nib_onl_entry_t *_nib_onl_get(const ipv6_addr_t *addr, unsigned iface);
+
+/**
+ * @brief   Gets a node by IPv6 address and interface from the neighbor cache
+ *
+ * @pre     `(addr != NULL)`
+ *
+ * @param[in] addr  The address of a node. Must not be NULL.
+ * @param[in] iface The interface to the node. May be 0 for any interface.
+ *
+ * @return  The Neighbor Cache entry for node with @p addr and @p iface on success.
+ * @return  NULL, if there is no such entry.
+ */
+static inline _nib_onl_entry_t *_nib_onl_nc_get(const ipv6_addr_t *addr, unsigned iface)
+{
+    _nib_onl_entry_t *nce = _nib_onl_get(addr, iface);
+    if (nce && (nce->mode & _NC)) {
+        return nce;
+    }
+    return NULL;
+}
 
 /**
  * @brief   Creates or gets an existing node from the neighbor cache by address
@@ -661,6 +682,16 @@ _nib_offl_entry_t *_nib_pl_add(unsigned iface,
  * Corresponding on-link entry is removed, too.
  */
 void _nib_pl_remove(_nib_offl_entry_t *nib_offl);
+
+/**
+ * @brief   Removes a prefix from the prefix list as well as the addresses
+ *          associated with the prefix.
+ *
+ * @param[in,out] nib_offl    An entry.
+ *
+ * Corresponding on-link entry is removed, too.
+ */
+void _nib_offl_remove_prefix(_nib_offl_entry_t *pfx);
 
 #if IS_ACTIVE(CONFIG_GNRC_IPV6_NIB_ROUTER) || DOXYGEN
 /**

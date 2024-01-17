@@ -15,9 +15,11 @@
  * @brief       RTT implementation using LPTIM1
  *
  * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
- *
+ * @author      Andres Diaz    <andres.diaz@andeselectronics.cl>
  * @}
  */
+
+#include <assert.h>
 
 #include "cpu.h"
 #include "irq.h"
@@ -48,19 +50,26 @@
 #error "RTT config: RTT_FREQUENCY not configured or invalid for your board"
 #endif
 
-
 #if defined(CPU_FAM_STM32F4) || defined(CPU_FAM_STM32F7)
 #define CLOCK_SRC_REG       RCC->DCKCFGR2
 #define CLOCK_SRC_MASK      RCC_DCKCFGR2_LPTIM1SEL
-#if CLOCK_LSE
+#if IS_ACTIVE(CONFIG_BOARD_HAS_LSE)
 #define CLOCK_SRC_CFG       (RCC_DCKCFGR2_LPTIM1SEL_1 | RCC_DCKCFGR2_LPTIM1SEL_0)
 #else
 #define CLOCK_SRC_CFG       (RCC_DCKCFGR2_LPTIM1SEL_0)
 #endif
+#elif defined(CPU_FAM_STM32L5)
+#define CLOCK_SRC_REG       RCC->CCIPR1
+#define CLOCK_SRC_MASK      RCC_CCIPR1_LPTIM1SEL
+#if IS_ACTIVE(CONFIG_BOARD_HAS_LSE)
+#define CLOCK_SRC_CFG       (RCC_CCIPR1_LPTIM1SEL_1 | RCC_CCIPR1_LPTIM1SEL_0)
+#else
+#define CLOCK_SRC_CFG       (RCC_CCIPR1_LPTIM1SEL_0)
+#endif
 #else
 #define CLOCK_SRC_REG       RCC->CCIPR
 #define CLOCK_SRC_MASK      RCC_CCIPR_LPTIM1SEL
-#if CLOCK_LSE
+#if IS_ACTIVE(CONFIG_BOARD_HAS_LSE)
 #define CLOCK_SRC_CFG       (RCC_CCIPR_LPTIM1SEL_1 | RCC_CCIPR_LPTIM1SEL_0)
 #else
 #define CLOCK_SRC_CFG       (RCC_CCIPR_LPTIM1SEL_0)
@@ -74,13 +83,16 @@ register. */
 #define EXTI_IMR2_IM32      (1 << 0)
 #endif
 
-#if defined(CPU_FAM_STM32L4) || defined(CPU_FAM_STM32WB)
+#if defined(CPU_FAM_STM32L4) || defined(CPU_FAM_STM32WB) || defined(CPU_FAM_STM32L5)
 #define IMR_REG             IMR2
 #define EXTI_IMR_BIT        EXTI_IMR2_IM32
+#elif defined(CPU_FAM_STM32G0) || defined(CPU_FAM_STM32WL)
+#define IMR_REG             IMR1
+#define EXTI_IMR_BIT        EXTI_IMR1_IM29
 #elif defined(CPU_FAM_STM32G4)
 #define IMR_REG             IMR2
 #define EXTI_IMR_BIT        EXTI_IMR2_IM37
-#elif defined(CPU_FAM_STM32L0) || defined(CPU_FAM_STM32G0)
+#elif defined(CPU_FAM_STM32L0)
 #define IMR_REG             IMR
 #define EXTI_IMR_BIT        EXTI_IMR_IM29
 #else
@@ -94,7 +106,6 @@ register. */
 #define EXTI_PR_BIT         EXTI_PR_PR23
 #endif
 
-
 /* allocate memory for overflow and alarm callbacks + args */
 static rtt_cb_t ovf_cb = NULL;
 static void *ovf_arg;
@@ -103,7 +114,9 @@ static void *to_arg;
 
 void rtt_init(void)
 {
+    /* Enable the low speed clock (LSE) */
     stmclk_enable_lfclk();
+
     /* power on the selected LPTIMER */
     rtt_poweron();
 
@@ -123,12 +136,17 @@ void rtt_init(void)
     EXTI->IMR_REG |= EXTI_IMR_BIT;
 #if !defined(CPU_FAM_STM32L4) && !defined(CPU_FAM_STM32L0) && \
     !defined(CPU_FAM_STM32WB) && !defined(CPU_FAM_STM32G4) && \
-    !defined(CPU_FAM_STM32G0)
+    !defined(CPU_FAM_STM32G0) && !defined(CPU_FAM_STM32WL) && \
+    !defined(CPU_FAM_STM32L5)
     EXTI->FTSR_REG &= ~(EXTI_FTSR_BIT);
     EXTI->RTSR_REG |= EXTI_RTSR_BIT;
     EXTI->PR_REG = EXTI_PR_BIT;
 #endif
+#if defined(TIM6_DAC_LPTIM1_SHARED_IRQ)
+    NVIC_EnableIRQ(TIM6_DAC_LPTIM1_IRQn);
+#else
     NVIC_EnableIRQ(LPTIM1_IRQn);
+#endif
     /* enable timer */
     LPTIM1->CR = LPTIM_CR_ENABLE;
     /* set auto-reload value (timer needs to be enabled for this) */
@@ -176,6 +194,11 @@ void rtt_set_alarm(uint32_t alarm, rtt_cb_t cb, void *arg)
     irq_restore(is);
 }
 
+uint32_t rtt_get_alarm(void)
+{
+    return LPTIM1->CMP;
+}
+
 void rtt_clear_alarm(void)
 {
     to_cb = NULL;
@@ -185,6 +208,8 @@ void rtt_poweron(void)
 {
 #ifdef RCC_APB1ENR1_LPTIM1EN
     periph_clk_en(APB1, RCC_APB1ENR1_LPTIM1EN);
+#elif defined(RCC_APBENR1_LPTIM1EN)
+    periph_clk_en(APB1, RCC_APBENR1_LPTIM1EN);
 #else
     periph_clk_en(APB1, RCC_APB1ENR_LPTIM1EN);
 #endif
@@ -194,12 +219,18 @@ void rtt_poweroff(void)
 {
 #ifdef RCC_APB1ENR1_LPTIM1EN
     periph_clk_dis(APB1, RCC_APB1ENR1_LPTIM1EN);
+#elif defined(RCC_APBENR1_LPTIM1EN)
+    periph_clk_dis(APB1, RCC_APBENR1_LPTIM1EN);
 #else
     periph_clk_dis(APB1, RCC_APB1ENR_LPTIM1EN);
 #endif
 }
 
+#if defined(CPU_FAM_STM32G0)
+void isr_tim6_dac_lptim1(void)
+#else
 void isr_lptim1(void)
+#endif
 {
     if (LPTIM1->ISR & LPTIM_ISR_CMPM) {
         if (to_cb) {
@@ -217,7 +248,8 @@ void isr_lptim1(void)
     LPTIM1->ICR = (LPTIM_ICR_ARRMCF | LPTIM_ICR_CMPMCF);
 #if !defined(CPU_FAM_STM32L4) && !defined(CPU_FAM_STM32L0) && \
     !defined(CPU_FAM_STM32WB) && !defined(CPU_FAM_STM32G4) && \
-    !defined(CPU_FAM_STM32G0)
+    !defined(CPU_FAM_STM32G0) && !defined(CPU_FAM_STM32WL) && \
+    !defined(CPU_FAM_STM32L5)
     EXTI->PR_REG = EXTI_PR_BIT; /* only clear the associated bit */
 #endif
 

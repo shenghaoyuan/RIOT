@@ -46,8 +46,8 @@ extern "C" {
 #include "cpu_conf.h"
 #define DEBUG_PRINT(...) \
     do { \
-        if ((sched_active_thread == NULL) || \
-            (sched_active_thread->stack_size >= \
+        if ((thread_get_active() == NULL) || \
+            (thread_get_active()->stack_size >= \
              THREAD_EXTRA_STACKSIZE_PRINTF)) { \
             printf(__VA_ARGS__); \
         } \
@@ -68,7 +68,7 @@ extern "C" {
  *          @ref DEBUG() will generate output only if ENABLE_DEBUG is non-zero.
  */
 #if !defined(ENABLE_DEBUG) || defined(DOXYGEN)
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG 0
 #endif
 
 /**
@@ -94,7 +94,7 @@ extern "C" {
  *
  * @note Another name for ::DEBUG_PRINT
  */
-#define DEBUG(...) if (ENABLE_DEBUG) { DEBUG_PRINT(__VA_ARGS__); }
+#define DEBUG(...) do { if (ENABLE_DEBUG) { DEBUG_PRINT(__VA_ARGS__); } } while (0)
 
 /**
  * @def DEBUG_PUTS
@@ -102,7 +102,7 @@ extern "C" {
  * @brief Print debug information to stdout using puts(), so no stack size
  *        restrictions do apply.
  */
-#define DEBUG_PUTS(str) if (ENABLE_DEBUG) { puts(str); }
+#define DEBUG_PUTS(str) do { if (ENABLE_DEBUG) { puts(str); } } while (0)
 /** @} */
 
 /**

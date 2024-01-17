@@ -20,3 +20,13 @@ config BOARD_STM32F030F4_DEMO
     select HAS_PERIPH_UART
     select HAS_PERIPH_SPI
     select HAS_PERIPH_RTC
+
+    # Clock configuration
+    select BOARD_HAS_HSE
+
+choice LIBC_IMPLEMENTATION
+    # Use Picolibc to reduce ROM usage
+    default MODULE_PICOLIBC
+endchoice
+
+source "$(RIOTBOARD)/common/stm32/Kconfig"

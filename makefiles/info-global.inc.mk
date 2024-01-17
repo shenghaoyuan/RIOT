@@ -3,12 +3,14 @@
         info-boards-supported \
         info-boards-features-missing \
         info-boards-features-blacklisted \
+        info-boards-features-conflicting \
         #
 
 BOARDDIR_GLOBAL := $(BOARDDIR)
 USEMODULE_GLOBAL := $(USEMODULE)
 USEPKG_GLOBAL := $(USEPKG)
 FEATURES_REQUIRED_GLOBAL := $(FEATURES_REQUIRED)
+FEATURES_REQUIRED_ANY_GLOBAL := $(FEATURES_REQUIRED_ANY)
 FEATURES_OPTIONAL_GLOBAL := $(FEATURES_OPTIONAL)
 FEATURES_CONFLICT_GLOBAL := $(FEATURES_CONFLICT)
 FEATURES_CONFLICT_MSG_GLOBAL := $(FEATURES_MSG_CONFLICT)
@@ -23,6 +25,7 @@ define board_unsatisfied_features
   DISABLE_MODULE    := $(DISABLE_MODULE_GLOBAL)
   DEFAULT_MODULE    := $(DEFAULT_MODULE_GLOBAL)
   FEATURES_REQUIRED := $(FEATURES_REQUIRED_GLOBAL)
+  FEATURES_REQUIRED_ANY := $(FEATURES_REQUIRED_ANY_GLOBAL)
   FEATURES_OPTIONAL := $(FEATURES_OPTIONAL_GLOBAL)
   FEATURES_CONFLICT := $(FEATURES_CONFLICT_GLOBAL)
   FEATURES_CONFLICT_MSG := $(FEATURES_CONFLICT_MSG_GLOBAL)
@@ -42,8 +45,13 @@ define board_unsatisfied_features
   undefine CPU_ARCH
   undefine CPU_CORE
   undefine CPU_FAM
+  undefine RUST_TARGET
 
   include $(RIOTBASE)/Makefile.features
+  # always select provided architecture features
+  FEATURES_REQUIRED += $$(filter arch_%,$$(FEATURES_PROVIDED))
+  # always select CPU core features
+  FEATURES_REQUIRED += $$(filter cpu_core_%,$$(FEATURES_PROVIDED))
   # FEATURES_USED must be populated first in this case so that dependency
   # resolution can take optional features into account during the first pass.
   # Also: This allows us to skip resolution if already a missing feature is
@@ -55,6 +63,10 @@ define board_unsatisfied_features
     BOARDS_FEATURES_MISSING += "$$(BOARD) $$(FEATURES_MISSING)"
     BOARDS_WITH_MISSING_FEATURES += $$(BOARD)
   else
+    # add default modules
+    include $(RIOTMAKE)/defaultmodules.inc.mk
+    USEMODULE += $$(filter-out $$(DISABLE_MODULE),$$(DEFAULT_MODULE))
+
     include $(RIOTMAKE)/dependency_resolution.inc.mk
 
     ifneq (,$$(FEATURES_MISSING))
@@ -65,6 +77,11 @@ define board_unsatisfied_features
     ifneq (,$$(FEATURES_USED_BLACKLISTED))
       BOARDS_FEATURES_USED_BLACKLISTED += "$$(BOARD) $$(FEATURES_USED_BLACKLISTED)"
       BOARDS_WITH_BLACKLISTED_FEATURES += $$(BOARD)
+    endif
+
+    ifneq (,$$(FEATURES_CONFLICTING))
+      BOARDS_FEATURES_CONFLICTING += "$$(BOARD) $$(FEATURES_CONFLICTING)"
+      BOARDS_WITH_CONFLICTING_FEATURES += $$(BOARD)
     endif
   endif
 
@@ -80,9 +97,13 @@ BOARDS_WITH_MISSING_FEATURES :=
 BOARDS_FEATURES_MISSING :=
 BOARDS_WITH_BLACKLISTED_FEATURES :=
 BOARDS_FEATURES_USED_BLACKLISTED :=
+BOARDS_FEATURES_CONFLICTING :=
+BOARDS_WITH_CONFLICTING_FEATURES :=
 
 $(foreach board,$(BOARDS),$(eval $(call board_unsatisfied_features,$(board))))
-BOARDS := $(filter-out $(BOARDS_WITH_MISSING_FEATURES) $(BOARDS_WITH_BLACKLISTED_FEATURES), $(BOARDS))
+BOARDS := $(filter-out $(BOARDS_WITH_MISSING_FEATURES) \
+                       $(BOARDS_WITH_BLACKLISTED_FEATURES) \
+                       $(BOARDS_WITH_CONFLICTING_FEATURES), $(BOARDS))
 
 info-buildsizes: SHELL=bash
 info-buildsizes:
@@ -123,6 +144,12 @@ info-boards-features-missing:
 
 info-boards-features-blacklisted:
 	@for f in $(BOARDS_FEATURES_USED_BLACKLISTED); do echo $${f}; done | column -t
+
+info-boards-features-conflicting:
+	@for f in $(BOARDS_FEATURES_CONFLICTING); do echo $${f}; done | column -t
+
+create-Makefile.ci:
+	@$(RIOTTOOLS)/insufficient_memory/create_makefile.ci.sh --no-docker
 
 # Reset BOARDSDIR so unchanged for makefiles included after, for now only
 # needed for buildtests.inc.mk

@@ -14,7 +14,6 @@
  * @}
  */
 
-
 #include "xtimer.h"
 
 #include "lwip.h"
@@ -24,6 +23,5 @@
 
 void _net_init(void)
 {
-    xtimer_init();
     lwip_bootstrap();
 }
