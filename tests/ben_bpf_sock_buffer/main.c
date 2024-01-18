@@ -11,7 +11,7 @@
 #elif BPF_COQ == 1
 #include "interpreter.h"
 #else
-#include "ibpf_util.h"
+#include "havm_interpreter.h"
 #endif
 
 
@@ -119,34 +119,9 @@ struct test_md
 
 struct test_md bpf_input_ctx = {.data_start = 100, .data_end = 200, .len = 9, .array={0}};
         
-#if BPF_COQ == 2
-static uint16_t *jitted_thumb_list;
-
-ibpf_full_state_t ibpf_state;
-
-
-__attribute__ ((noinline)) void _magic_function(unsigned int ofs, struct jit_state* st){
-  int res = 0;
-  __asm volatile (
-    "orr %[input_0], #0x1\n\t"
-    "mov r12, sp\n\t"
-    "sub sp, sp, #48\n\t"
-    "str r12, [sp, #0]\n\t"
-    "mov pc, %[input_0]\n\t"
-    : [result] "=r" (res)
-    : [input_1] "r" (st), [input_0] "r" (jitted_thumb_list + ofs)
-    : "cc" //The instruction modifies the condition code flags
-  );
-  return ;
-}
-
-
-#else
-/* ibpf defines this within the struct */
 static uint8_t _bpf_stack[512];
-#endif
 
-#if BPF_COQ == 1
+#if BPF_COQ == 1 || BPF_COQ == 2
 static struct memory_region mr_stack = {.start_addr = (uintptr_t)_bpf_stack,
                                         .block_size = sizeof(_bpf_stack),
                                         .block_perm = Freeable,
@@ -156,6 +131,27 @@ static struct memory_region mr_ctx = {.start_addr = (uintptr_t)&bpf_input_ctx,
                                         .block_size = sizeof(bpf_input_ctx),
                                         .block_perm = Writable,
                                         .block_ptr = &bpf_input_ctx};
+#endif
+        
+#if BPF_COQ == 2
+
+__attribute((aligned(4))) unsigned int tp_bin_list[JITTED_LIST_MAX_LENGTH];
+struct key_value2 tp_kv_list[sizeof(bpf_input_bin)/8];
+
+__attribute__ ((noinline)) void _magic_function(unsigned int ofs, struct havm_state* st){
+  int res = 0;
+  __asm volatile (
+    "orr %[input_0], #0x1\n\t"
+    "mov r12, sp\n\t"
+    "sub sp, sp, #48\n\t"
+    "str r12, [sp, #0]\n\t"
+    "mov pc, %[input_0]\n\t"
+    : [result] "=r" (res)
+    : [input_1] "r" (st), [input_0] "r" (tp_bin_list + ofs)
+    : "cc" //The instruction modifies the condition code flags
+  );
+  return ;
+}
 #endif
 
 
@@ -189,11 +185,34 @@ int main(void){
   };
   
 #else
-  jitted_thumb_list = ibpf_state.jitted_thumb_list;
-  ibpf_full_state_init(&ibpf_state, 2);
-  ibpf_set_mem_region(&ibpf_state, &bpf_input_ctx, sizeof(bpf_input_ctx), Writable, 1);
-  ibpf_set_code(&ibpf_state, bpf_input_bin, sizeof(bpf_input_bin));
-  jit_alu32(&ibpf_state.st);
+  struct memory_region memory_regions[] = { mr_stack, mr_ctx };
+  
+  struct jit_state jst = {
+    .input_len = sizeof(bpf_input_bin)/8,
+    .input_ins = (unsigned long long *) bpf_input_bin,
+    .tp_kv = tp_kv_list,
+    .use_IR11 = 0,
+    .ld_set = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U},
+    .st_set = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U},
+    .tp_bin_len = 0,
+    .tp_bin = tp_bin_list,
+  };
+  
+  struct havm_state hst = {
+    .regsmap = {0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, (uintptr_t)_bpf_stack+512},
+    .pc_loc = 0,
+    .bpf_flag = vBPF_OK,
+    .mrs_num = ARRAY_SIZE(memory_regions),
+    .mrs = memory_regions,
+    .input_len = sizeof(bpf_input_bin)/8,
+    .input_ins = (unsigned long long *) bpf_input_bin,
+    .tp_kv = tp_kv_list,
+    .tp_bin_len = 0,
+    .tp_bin = tp_bin_list,
+  };
+  
+  
+  whole_compiler(&jst);
 #endif
 
   uint32_t begin = ztimer_now(ZTIMER_USEC); // unsigned long long -> uint64_t
@@ -209,7 +228,7 @@ int main(void){
   //printf("CertrBPF C result = 0x:%x\n", (unsigned int)result); // = 0x9
   
 #else
-  int result = ibpf_interpreter(&ibpf_state.st, 10000, (uintptr_t) &bpf_input_ctx);
+  int result = havm_interpreter(&hst, 10000, (uintptr_t) &bpf_input_ctx);
   
   //printf("flag=%d\n", ibpf_state.st.flag);
   //printf("CertrBPF-JIT C result = 0x:%x\n", (unsigned int)result);
